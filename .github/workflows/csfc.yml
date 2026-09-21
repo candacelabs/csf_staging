@@ -1,0 +1,38 @@
+name: CSF compiler
+
+on:
+  pull_request:
+    paths: ['csf/compiler/**', 'csf/examples/proof/**', 'tools/bazel.sh', '.github/workflows/csfc.yml']
+  push:
+    branches: [main, candace-export]
+    paths: ['csf/compiler/**', 'csf/examples/proof/**', 'tools/bazel.sh', '.github/workflows/csfc.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: csfc-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compiler:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Build and test csfc
+        env:
+          CANDACE_BAZEL_WORKSPACE: ${{ github.workspace }}/csf/compiler
+        run: >-
+          bash tools/bazel.sh test //...
+          --lockfile_mode=error --test_output=errors --nobuild_tests_only --jobs=2
+      - name: Check the shipped compiler example
+        working-directory: csf/compiler
+        run: ./bazel-bin/bin/csfc check-generated
+      - name: Bootstrap pinned Lean and compile the verifier stub
+        run: |
+          bash csf/examples/proof/check.sh
+          cd csf/compiler/verification
+          ../../examples/proof/.cache/lean-4.34.0-linux/bin/lake build
