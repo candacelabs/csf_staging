@@ -1,6 +1,6 @@
 # Consuming this module from a legacy WORKSPACE build
 
-**This is the second-class path.** The supported way to depend on `candace` is
+**This is the second-class path.** The supported way to depend on `csf` is
 bzlmod, in one of the two shapes `examples/external-consumer` demonstrates and
 the release process proves before it publishes an archive. Read that example
 first; come back here only if the consuming repository still builds from a
@@ -34,10 +34,10 @@ http_archive(name = "io_bazel_rules_go", sha256 = "...", urls = ["..."])
 http_archive(name = "bazel_gazelle", sha256 = "...", urls = ["..."])
 
 http_archive(
-    name = "candace",
+    name = "csf",
     sha256 = "<sha256 from the release>",
     strip_prefix = "candace-<sha12>",
-    urls = ["https://github.com/candacelabs/csf/releases/download/export-<sha12>/candace-<sha12>.tar.gz"],
+    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
     # This module's committed BUILD files were generated under bzlmod, where
     # rules_go and Gazelle are named `rules_go` and `gazelle`. Under WORKSPACE
     # they are not, so the load labels have to be remapped.
@@ -47,10 +47,15 @@ http_archive(
     },
 )
 
-load("@candace//bazel:deps.bzl", "candace_dependencies")
+load("@csf//bazel:deps.bzl", "candace_dependencies")
 
 candace_dependencies()
 ```
+
+The public URL applies only after that version is published publicly. During
+private staging, download the reviewed asset from `candacelabs/csf_staging`
+with authenticated access and use its local archive URL; keep the same checksum
+and strip prefix.
 
 `candace_dependencies()` is deliberately small. It calls
 `go_rules_dependencies()`, registers the Go SDK version this module's BUILD
@@ -66,7 +71,7 @@ importer, run in the consuming repository:
 
 ```bash
 gazelle update-repos \
-  -from_file=bazel-<workspace>/external/candace/go.mod \
+  -from_file=bazel-<workspace>/external/csf/go.mod \
   -to_macro=candace_go_deps.bzl%candace_go_deps \
   -prune
 ```
@@ -82,7 +87,7 @@ Two consequences of that same limitation are yours to carry:
   file generation for that module; the same two settings belong on the
   `go_repository` your macro generates for it (`patches`, `patch_args`,
   `build_file_generation = "off"`), pointing at
-  `@candace//third_party/pg_query_go:BUILD.bazel`. Only the packages that
+  `@csf//third_party/pg_query_go:BUILD.bazel`. Only the packages that
   reach `pkg/liquidproto`'s SQL parsing need it.
 - **The Rust workspace under `xetcas/` is bzlmod-only.** It resolves its crates
   through `crate_universe`, which has no WORKSPACE equivalent maintained here.

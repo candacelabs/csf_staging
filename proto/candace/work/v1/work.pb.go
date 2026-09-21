@@ -145,6 +145,61 @@ func (ResumeCondition) EnumDescriptor() ([]byte, []int) {
 	return file_candace_work_v1_work_proto_rawDescGZIP(), []int{1}
 }
 
+// Dependencies describe prerequisites and the available development paths.
+type DependencyCondition int32
+
+const (
+	DependencyCondition_DEPENDENCY_CONDITION_UNSPECIFIED           DependencyCondition = 0
+	DependencyCondition_DEPENDENCY_CONDITION_COMPLETED             DependencyCondition = 1
+	DependencyCondition_DEPENDENCY_CONDITION_IMPLEMENTATION_MERGED DependencyCondition = 2
+	// Create a new worktree on the prerequisite implementation and stack changes,
+	// or wait for that implementation to merge. This is not a blocking relation.
+	DependencyCondition_DEPENDENCY_CONDITION_STACKED_OR_MERGED DependencyCondition = 3
+)
+
+// Enum value maps for DependencyCondition.
+var (
+	DependencyCondition_name = map[int32]string{
+		0: "DEPENDENCY_CONDITION_UNSPECIFIED",
+		1: "DEPENDENCY_CONDITION_COMPLETED",
+		2: "DEPENDENCY_CONDITION_IMPLEMENTATION_MERGED",
+		3: "DEPENDENCY_CONDITION_STACKED_OR_MERGED",
+	}
+	DependencyCondition_value = map[string]int32{
+		"DEPENDENCY_CONDITION_UNSPECIFIED":           0,
+		"DEPENDENCY_CONDITION_COMPLETED":             1,
+		"DEPENDENCY_CONDITION_IMPLEMENTATION_MERGED": 2,
+		"DEPENDENCY_CONDITION_STACKED_OR_MERGED":     3,
+	}
+)
+
+func (x DependencyCondition) Enum() *DependencyCondition {
+	p := new(DependencyCondition)
+	*p = x
+	return p
+}
+
+func (x DependencyCondition) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DependencyCondition) Descriptor() protoreflect.EnumDescriptor {
+	return file_candace_work_v1_work_proto_enumTypes[2].Descriptor()
+}
+
+func (DependencyCondition) Type() protoreflect.EnumType {
+	return &file_candace_work_v1_work_proto_enumTypes[2]
+}
+
+func (x DependencyCondition) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DependencyCondition.Descriptor instead.
+func (DependencyCondition) EnumDescriptor() ([]byte, []int) {
+	return file_candace_work_v1_work_proto_rawDescGZIP(), []int{2}
+}
+
 type Evidence struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Description   string                 `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
@@ -363,6 +418,7 @@ type SourceIssue struct {
 	State         string                 `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
 	Body          string                 `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Id            int64                  `protobuf:"varint,7,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -437,6 +493,13 @@ func (x *SourceIssue) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *SourceIssue) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
 }
 
 type SourceComment struct {
@@ -772,6 +835,207 @@ func (x *ProgramSnapshot) GetCheckedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+type TicketDependency struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IssueUrl      string                 `protobuf:"bytes,1,opt,name=issue_url,json=issueUrl,proto3" json:"issue_url,omitempty"`
+	Condition     DependencyCondition    `protobuf:"varint,2,opt,name=condition,proto3,enum=candace.work.v1.DependencyCondition" json:"condition,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TicketDependency) Reset() {
+	*x = TicketDependency{}
+	mi := &file_candace_work_v1_work_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TicketDependency) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TicketDependency) ProtoMessage() {}
+
+func (x *TicketDependency) ProtoReflect() protoreflect.Message {
+	mi := &file_candace_work_v1_work_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TicketDependency.ProtoReflect.Descriptor instead.
+func (*TicketDependency) Descriptor() ([]byte, []int) {
+	return file_candace_work_v1_work_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *TicketDependency) GetIssueUrl() string {
+	if x != nil {
+		return x.IssueUrl
+	}
+	return ""
+}
+
+func (x *TicketDependency) GetCondition() DependencyCondition {
+	if x != nil {
+		return x.Condition
+	}
+	return DependencyCondition_DEPENDENCY_CONDITION_UNSPECIFIED
+}
+
+// Author input shared by template, preview and creation. Repeated-field
+// constraints are checked by the consumer; Liquid Proto refines scalar fields.
+type TicketSpec struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SchemaVersion uint32                 `protobuf:"varint,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	Repository    string                 `protobuf:"bytes,2,opt,name=repository,proto3" json:"repository,omitempty"`
+	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Goal          string                 `protobuf:"bytes,4,opt,name=goal,proto3" json:"goal,omitempty"`
+	Scope         []string               `protobuf:"bytes,5,rep,name=scope,proto3" json:"scope,omitempty"`
+	Acceptance    []string               `protobuf:"bytes,6,rep,name=acceptance,proto3" json:"acceptance,omitempty"`
+	Dependencies  []*TicketDependency    `protobuf:"bytes,7,rep,name=dependencies,proto3" json:"dependencies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TicketSpec) Reset() {
+	*x = TicketSpec{}
+	mi := &file_candace_work_v1_work_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TicketSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TicketSpec) ProtoMessage() {}
+
+func (x *TicketSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_candace_work_v1_work_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TicketSpec.ProtoReflect.Descriptor instead.
+func (*TicketSpec) Descriptor() ([]byte, []int) {
+	return file_candace_work_v1_work_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *TicketSpec) GetSchemaVersion() uint32 {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return 0
+}
+
+func (x *TicketSpec) GetRepository() string {
+	if x != nil {
+		return x.Repository
+	}
+	return ""
+}
+
+func (x *TicketSpec) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *TicketSpec) GetGoal() string {
+	if x != nil {
+		return x.Goal
+	}
+	return ""
+}
+
+func (x *TicketSpec) GetScope() []string {
+	if x != nil {
+		return x.Scope
+	}
+	return nil
+}
+
+func (x *TicketSpec) GetAcceptance() []string {
+	if x != nil {
+		return x.Acceptance
+	}
+	return nil
+}
+
+func (x *TicketSpec) GetDependencies() []*TicketDependency {
+	if x != nil {
+		return x.Dependencies
+	}
+	return nil
+}
+
+// Returned even when creation succeeds but attaching a dependency fails, so
+// callers retain the created issue identity and can reconcile it without a retry.
+type TicketReceipt struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Issue *SourceIssue           `protobuf:"bytes,1,opt,name=issue,proto3" json:"issue,omitempty"`
+	// Only dependencies attached through GitHub's native blocked-by API.
+	LinkedDependencies []*TicketDependency `protobuf:"bytes,2,rep,name=linked_dependencies,json=linkedDependencies,proto3" json:"linked_dependencies,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *TicketReceipt) Reset() {
+	*x = TicketReceipt{}
+	mi := &file_candace_work_v1_work_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TicketReceipt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TicketReceipt) ProtoMessage() {}
+
+func (x *TicketReceipt) ProtoReflect() protoreflect.Message {
+	mi := &file_candace_work_v1_work_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TicketReceipt.ProtoReflect.Descriptor instead.
+func (*TicketReceipt) Descriptor() ([]byte, []int) {
+	return file_candace_work_v1_work_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *TicketReceipt) GetIssue() *SourceIssue {
+	if x != nil {
+		return x.Issue
+	}
+	return nil
+}
+
+func (x *TicketReceipt) GetLinkedDependencies() []*TicketDependency {
+	if x != nil {
+		return x.LinkedDependencies
+	}
+	return nil
+}
+
 var File_candace_work_v1_work_proto protoreflect.FileDescriptor
 
 const file_candace_work_v1_work_proto_rawDesc = "" +
@@ -809,7 +1073,7 @@ const file_candace_work_v1_work_proto_rawDesc = "" +
 	"recordedAt\x12P\n" +
 	"\x10task_fingerprint\x18\r \x01(\tB%\x92\x82\x19!\n" +
 	"\x1fmatches(this, `^[a-f0-9]{64}$`)R\x0ftaskFingerprint\x12G\n" +
-	"\rtrace_context\x18\x0e \x01(\v2\".candace.telemetry.v1.TraceContextR\ftraceContext\"\xbb\x01\n" +
+	"\rtrace_context\x18\x0e \x01(\v2\".candace.telemetry.v1.TraceContextR\ftraceContext\"\xcb\x01\n" +
 	"\vSourceIssue\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\x03R\x06number\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x19\n" +
@@ -817,7 +1081,8 @@ const file_candace_work_v1_work_proto_rawDesc = "" +
 	"\x05state\x18\x04 \x01(\tR\x05state\x12\x12\n" +
 	"\x04body\x18\x05 \x01(\tR\x04body\x129\n" +
 	"\n" +
-	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xa4\x02\n" +
+	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x0e\n" +
+	"\x02id\x18\a \x01(\x03R\x02id\"\xa4\x02\n" +
 	"\rSourceComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x19\n" +
 	"\bhtml_url\x18\x02 \x01(\tR\ahtmlUrl\x12\x12\n" +
@@ -848,7 +1113,32 @@ const file_candace_work_v1_work_proto_rawDesc = "" +
 	"\x0fProgramSnapshot\x123\n" +
 	"\x05tasks\x18\x01 \x03(\v2\x1d.candace.work.v1.ResumeRecordR\x05tasks\x129\n" +
 	"\n" +
-	"checked_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcheckedAt*\xa2\x01\n" +
+	"checked_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcheckedAt\"\xfe\x01\n" +
+	"\x10TicketDependency\x12{\n" +
+	"\tissue_url\x18\x01 \x01(\tB^\x92\x82\x19Z\n" +
+	"Xmatches(this, `^https://github.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*$`)R\bissueUrl\x12m\n" +
+	"\tcondition\x18\x02 \x01(\x0e2$.candace.work.v1.DependencyConditionB)\x92\x82\x19%\n" +
+	"#this == 1 || this == 2 || this == 3R\tcondition\"\x80\x04\n" +
+	"\n" +
+	"TicketSpec\x126\n" +
+	"\x0eschema_version\x18\x01 \x01(\rB\x0f\x92\x82\x19\v\n" +
+	"\tthis == 1R\rschemaVersion\x12n\n" +
+	"\n" +
+	"repository\x18\x02 \x01(\tBN\x92\x82\x19J\n" +
+	"Hmatches(this, `^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$`)R\n" +
+	"repository\x12t\n" +
+	"\x05title\x18\x03 \x01(\tB^\x92\x82\x19Z\n" +
+	"Xlen(this) >= 1 && len(this) <= 256 && matches(this, `[^\\s]`) && !matches(this, `[\\r\\n]`)R\x05title\x12W\n" +
+	"\x04goal\x18\x04 \x01(\tBC\x92\x82\x19?\n" +
+	"=len(this) >= 1 && len(this) <= 8192 && matches(this, `[^\\s]`)R\x04goal\x12\x14\n" +
+	"\x05scope\x18\x05 \x03(\tR\x05scope\x12\x1e\n" +
+	"\n" +
+	"acceptance\x18\x06 \x03(\tR\n" +
+	"acceptance\x12E\n" +
+	"\fdependencies\x18\a \x03(\v2!.candace.work.v1.TicketDependencyR\fdependencies\"\x97\x01\n" +
+	"\rTicketReceipt\x122\n" +
+	"\x05issue\x18\x01 \x01(\v2\x1c.candace.work.v1.SourceIssueR\x05issue\x12R\n" +
+	"\x13linked_dependencies\x18\x02 \x03(\v2!.candace.work.v1.TicketDependencyR\x12linkedDependencies*\xa2\x01\n" +
 	"\n" +
 	"WorkStatus\x12\x1b\n" +
 	"\x17WORK_STATUS_UNSPECIFIED\x10\x00\x12\x16\n" +
@@ -864,7 +1154,12 @@ const file_candace_work_v1_work_proto_rawDesc = "" +
 	"\x16RESUME_CONDITION_STALE\x10\x03\x12\x1d\n" +
 	"\x19RESUME_CONDITION_CONFLICT\x10\x04\x12\x1c\n" +
 	"\x18RESUME_CONDITION_INVALID\x10\x05\x12!\n" +
-	"\x1dRESUME_CONDITION_SOURCE_ERROR\x10\x06B9Z7github.com/candacelabs/csf/proto/candace/work/v1;workv1b\x06proto3"
+	"\x1dRESUME_CONDITION_SOURCE_ERROR\x10\x06*\xbb\x01\n" +
+	"\x13DependencyCondition\x12$\n" +
+	" DEPENDENCY_CONDITION_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eDEPENDENCY_CONDITION_COMPLETED\x10\x01\x12.\n" +
+	"*DEPENDENCY_CONDITION_IMPLEMENTATION_MERGED\x10\x02\x12*\n" +
+	"&DEPENDENCY_CONDITION_STACKED_OR_MERGED\x10\x03B9Z7github.com/candacelabs/csf/proto/candace/work/v1;workv1b\x06proto3"
 
 var (
 	file_candace_work_v1_work_proto_rawDescOnce sync.Once
@@ -878,44 +1173,52 @@ func file_candace_work_v1_work_proto_rawDescGZIP() []byte {
 	return file_candace_work_v1_work_proto_rawDescData
 }
 
-var file_candace_work_v1_work_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_candace_work_v1_work_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_candace_work_v1_work_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_candace_work_v1_work_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_candace_work_v1_work_proto_goTypes = []any{
 	(WorkStatus)(0),               // 0: candace.work.v1.WorkStatus
 	(ResumeCondition)(0),          // 1: candace.work.v1.ResumeCondition
-	(*Evidence)(nil),              // 2: candace.work.v1.Evidence
-	(*Checkpoint)(nil),            // 3: candace.work.v1.Checkpoint
-	(*SourceIssue)(nil),           // 4: candace.work.v1.SourceIssue
-	(*SourceComment)(nil),         // 5: candace.work.v1.SourceComment
-	(*SourceUser)(nil),            // 6: candace.work.v1.SourceUser
-	(*SourceSnapshot)(nil),        // 7: candace.work.v1.SourceSnapshot
-	(*ResumeRecord)(nil),          // 8: candace.work.v1.ResumeRecord
-	(*ProgramSnapshot)(nil),       // 9: candace.work.v1.ProgramSnapshot
-	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
-	(*v1.TraceContext)(nil),       // 11: candace.telemetry.v1.TraceContext
+	(DependencyCondition)(0),      // 2: candace.work.v1.DependencyCondition
+	(*Evidence)(nil),              // 3: candace.work.v1.Evidence
+	(*Checkpoint)(nil),            // 4: candace.work.v1.Checkpoint
+	(*SourceIssue)(nil),           // 5: candace.work.v1.SourceIssue
+	(*SourceComment)(nil),         // 6: candace.work.v1.SourceComment
+	(*SourceUser)(nil),            // 7: candace.work.v1.SourceUser
+	(*SourceSnapshot)(nil),        // 8: candace.work.v1.SourceSnapshot
+	(*ResumeRecord)(nil),          // 9: candace.work.v1.ResumeRecord
+	(*ProgramSnapshot)(nil),       // 10: candace.work.v1.ProgramSnapshot
+	(*TicketDependency)(nil),      // 11: candace.work.v1.TicketDependency
+	(*TicketSpec)(nil),            // 12: candace.work.v1.TicketSpec
+	(*TicketReceipt)(nil),         // 13: candace.work.v1.TicketReceipt
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
+	(*v1.TraceContext)(nil),       // 15: candace.telemetry.v1.TraceContext
 }
 var file_candace_work_v1_work_proto_depIdxs = []int32{
 	0,  // 0: candace.work.v1.Checkpoint.status:type_name -> candace.work.v1.WorkStatus
-	2,  // 1: candace.work.v1.Checkpoint.evidence:type_name -> candace.work.v1.Evidence
-	10, // 2: candace.work.v1.Checkpoint.recorded_at:type_name -> google.protobuf.Timestamp
-	11, // 3: candace.work.v1.Checkpoint.trace_context:type_name -> candace.telemetry.v1.TraceContext
-	10, // 4: candace.work.v1.SourceIssue.updated_at:type_name -> google.protobuf.Timestamp
-	10, // 5: candace.work.v1.SourceComment.created_at:type_name -> google.protobuf.Timestamp
-	10, // 6: candace.work.v1.SourceComment.updated_at:type_name -> google.protobuf.Timestamp
-	6,  // 7: candace.work.v1.SourceComment.user:type_name -> candace.work.v1.SourceUser
-	4,  // 8: candace.work.v1.SourceSnapshot.issue:type_name -> candace.work.v1.SourceIssue
-	5,  // 9: candace.work.v1.SourceSnapshot.comments:type_name -> candace.work.v1.SourceComment
-	4,  // 10: candace.work.v1.ResumeRecord.issue:type_name -> candace.work.v1.SourceIssue
-	3,  // 11: candace.work.v1.ResumeRecord.checkpoint:type_name -> candace.work.v1.Checkpoint
+	3,  // 1: candace.work.v1.Checkpoint.evidence:type_name -> candace.work.v1.Evidence
+	14, // 2: candace.work.v1.Checkpoint.recorded_at:type_name -> google.protobuf.Timestamp
+	15, // 3: candace.work.v1.Checkpoint.trace_context:type_name -> candace.telemetry.v1.TraceContext
+	14, // 4: candace.work.v1.SourceIssue.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 5: candace.work.v1.SourceComment.created_at:type_name -> google.protobuf.Timestamp
+	14, // 6: candace.work.v1.SourceComment.updated_at:type_name -> google.protobuf.Timestamp
+	7,  // 7: candace.work.v1.SourceComment.user:type_name -> candace.work.v1.SourceUser
+	5,  // 8: candace.work.v1.SourceSnapshot.issue:type_name -> candace.work.v1.SourceIssue
+	6,  // 9: candace.work.v1.SourceSnapshot.comments:type_name -> candace.work.v1.SourceComment
+	5,  // 10: candace.work.v1.ResumeRecord.issue:type_name -> candace.work.v1.SourceIssue
+	4,  // 11: candace.work.v1.ResumeRecord.checkpoint:type_name -> candace.work.v1.Checkpoint
 	1,  // 12: candace.work.v1.ResumeRecord.condition:type_name -> candace.work.v1.ResumeCondition
-	10, // 13: candace.work.v1.ResumeRecord.checked_at:type_name -> google.protobuf.Timestamp
-	8,  // 14: candace.work.v1.ProgramSnapshot.tasks:type_name -> candace.work.v1.ResumeRecord
-	10, // 15: candace.work.v1.ProgramSnapshot.checked_at:type_name -> google.protobuf.Timestamp
-	16, // [16:16] is the sub-list for method output_type
-	16, // [16:16] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	14, // 13: candace.work.v1.ResumeRecord.checked_at:type_name -> google.protobuf.Timestamp
+	9,  // 14: candace.work.v1.ProgramSnapshot.tasks:type_name -> candace.work.v1.ResumeRecord
+	14, // 15: candace.work.v1.ProgramSnapshot.checked_at:type_name -> google.protobuf.Timestamp
+	2,  // 16: candace.work.v1.TicketDependency.condition:type_name -> candace.work.v1.DependencyCondition
+	11, // 17: candace.work.v1.TicketSpec.dependencies:type_name -> candace.work.v1.TicketDependency
+	5,  // 18: candace.work.v1.TicketReceipt.issue:type_name -> candace.work.v1.SourceIssue
+	11, // 19: candace.work.v1.TicketReceipt.linked_dependencies:type_name -> candace.work.v1.TicketDependency
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_candace_work_v1_work_proto_init() }
@@ -928,8 +1231,8 @@ func file_candace_work_v1_work_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_candace_work_v1_work_proto_rawDesc), len(file_candace_work_v1_work_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   8,
+			NumEnums:      3,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

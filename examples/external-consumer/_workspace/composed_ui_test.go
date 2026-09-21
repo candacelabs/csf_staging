@@ -25,7 +25,7 @@ import (
 // These specs prove the presentation half of the composition from outside the
 // module: an invented identity, an overlay that redefines one shipped block, a
 // sidebar entry, and a page of this repository's own — every value resolved
-// through @candace// labels pointing at a downloaded archive.
+// through @csf// labels pointing at a downloaded archive.
 //
 // They need no Core, no PostgreSQL, and no network. An assembled Core opens a
 // database, a Warden client, and a harness, so a suite that ran the composition

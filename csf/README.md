@@ -256,7 +256,7 @@ bash examples/csf-consumer/test-archive.sh /path/to/candace-snapshot.tar.gz /tmp
 
 For Bazel consumers, use the public repository's
 [archive instructions](../README.md#consume-it-in-60-seconds) and depend on
-`@candace//csf`. Building that library does not start a host or database.
+`@csf//csf`. Building that library does not start a host or database.
 
 ## Run the Workbench
 

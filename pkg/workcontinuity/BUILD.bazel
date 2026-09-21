@@ -7,7 +7,9 @@ go_library(
         "http_source.go",
         "records.go",
         "source.go",
+        "tickets.go",
     ],
+    embedsrcs = ["ticket.md.tmpl"],
     importpath = "github.com/candacelabs/csf/pkg/workcontinuity",
     visibility = ["//visibility:public"],
     deps = [
@@ -28,6 +30,7 @@ go_test(
         "mock_generate_test.go",
         "mock_source_test.go",
         "source_test.go",
+        "tickets_test.go",
         "workcontinuity_suite_test.go",
     ],
     deps = [

@@ -14,7 +14,7 @@
 # candace rather than a warning about this file.
 #
 # The repositories candace declares for *itself* cannot be supplied from that
-# block at all, which is the part that bites: `@candace//pkg/pgmem` names
+# block at all, which is the part that bites: `@csf//pkg/pgmem` names
 # `@pg_query_go`, a patched archive candace's own MODULE.bazel fetches, and in
 # this shape it does not resolve. A consumer whose targets reach such a package
 # copies that declaration too, or uses the module shape.
@@ -41,12 +41,12 @@ http_archive = use_repo_rule(
 )
 
 http_archive(
-    name = "candace",
+    name = "csf",
     sha256 = "@CANDACE_ARCHIVE_SHA256@",
     strip_prefix = "@CANDACE_ARCHIVE_PREFIX@",
     urls = ["@CANDACE_ARCHIVE_URL@"],
 )
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
-go_deps.from_file(go_mod = "@candace//:go.mod")
+go_deps.from_file(go_mod = "@csf//:go.mod")
 @CANDACE_GO_REPOS@

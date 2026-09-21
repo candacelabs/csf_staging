@@ -14,12 +14,12 @@
 # tools/package_candace_archive.sh printed for the export it is pinning.
 module(name = "candace_archive_override_consumer")
 
-bazel_dep(name = "candace", version = "0.0.0")
+bazel_dep(name = "csf", version = "0.1.0")
 bazel_dep(name = "gazelle", version = "0.52.2")
 bazel_dep(name = "rules_go", version = "0.62.0")
 
 archive_override(
-    module_name = "candace",
+    module_name = "csf",
     integrity = "@CANDACE_ARCHIVE_INTEGRITY@",
     strip_prefix = "@CANDACE_ARCHIVE_PREFIX@",
     urls = ["@CANDACE_ARCHIVE_URL@"],
@@ -45,5 +45,5 @@ archive_override(
 # one instead, and then this list is its own direct dependencies — the short
 # list you would expect.
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
-go_deps.from_file(go_mod = "@candace//:go.mod")
+go_deps.from_file(go_mod = "@csf//:go.mod")
 @CANDACE_GO_REPOS@

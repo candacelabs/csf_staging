@@ -16,7 +16,7 @@ dependency (`pg_query_go`) whose patches bzlmod applies and WORKSPACE does not.
 
 Usage, from the consuming WORKSPACE, after `http_archive`-ing this module:
 
-    load("@candace//bazel:deps.bzl", "candace_dependencies")
+    load("@csf//bazel:deps.bzl", "candace_dependencies")
 
     candace_dependencies()
 """

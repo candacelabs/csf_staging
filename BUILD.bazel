@@ -26,7 +26,7 @@ load("@gazelle//:def.bzl", "gazelle")
 # gazelle:resolve go github.com/pganalyze/pg_query_go/v6 @pg_query_go//:pg_query_go
 
 # go.mod and go.sum are exported because a consumer's own module file reads them
-# (`go_deps.from_file(go_mod = "@candace//:go.mod")`). MODULE.bazel and
+# (`go_deps.from_file(go_mod = "@csf//:go.mod")`). MODULE.bazel and
 # .bazelversion are exported for //bazel:version_pins_test, which compares them
 # with the Starlark copy the legacy WORKSPACE shim publishes.
 exports_files(

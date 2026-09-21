@@ -1,14 +1,14 @@
-# Bazel module for the candace monorepo.
+# Bazel module for the CSF export.
 #
 # One Bazel module mirrors the one Go module (github.com/candacelabs/csf):
 # every Go package in this repository is built from this module's BUILD files,
 # which Gazelle maintains and CI gates on (tools/check-bazel-metadata.sh).
 #
 # Consumers depend on a published source archive of this module with a single
-# `bazel_dep(name = "candace", ...)` plus an `archive_override`.
+# `bazel_dep(name = "csf", ...)` plus an `archive_override`.
 module(
-    name = "candace",
-    version = "0.0.0",
+    name = "csf",
+    version = "0.1.0",
 )
 
 bazel_dep(name = "gazelle", version = "0.52.2")

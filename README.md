@@ -93,11 +93,18 @@ exact revision, published with no upstream history. Snapshot updates arrive as r
 `main`. Make source changes in the canonical repository; editing the generated
 destination directly would conflict with its next snapshot.
 
-After its review PR is merged, the publisher verifies that tree and creates an immutable `export-<sha12>` tag, a matching GitHub
-Release, and a provenance marker, `.candace-export.json`, naming the exact
-source revision it came from. Cite the tag, not a branch.
+After its review PR is merged, the publisher verifies that tree and creates
+immutable `v<version>` and `export-<sha12>` tags. The GitHub Release uses the
+semantic-version tag; `.candace-export.json` records the exact source revision.
+Cite a tag, not a branch.
 
 ## Consume it in 60 seconds
+
+Public URLs below apply only after that version is published to
+`candacelabs/csf`; a private staging release does not publish it there.
+For staging, download the release assets with authenticated access and use the
+[verified local-archive consumer](examples/csf-consumer#copy-into-your-own-go-repository).
+The Go module path remains `github.com/candacelabs/csf` in both stages.
 
 Each Release carries `candace-<sha12>.tar.gz` and its `.sha256`. The tarball is
 this tree re-rooted so `MODULE.bazel` is at the archive root, plus a deterministic
@@ -121,27 +128,27 @@ Copy the complete `sha256-...` output line into `integrity` in your own
 `MODULE.bazel`; the `.sha256` file's hexadecimal value is not an SRI value:
 
 ```python
-bazel_dep(name = "candace", version = "0.0.0")
+bazel_dep(name = "csf", version = "0.1.0")
 
 archive_override(
-    module_name = "candace",
+    module_name = "csf",
     integrity = "sha256-...",          # base64 SRI output from the command above
     strip_prefix = "candace-<sha12>",
-    urls = ["https://github.com/candacelabs/csf/releases/download/export-<sha12>/candace-<sha12>.tar.gz"],
+    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
 )
 ```
 
-Then depend on what you use — `@candace//services/candaceos/component`,
-`@candace//pkg/gotth/live`, `@candace//services/warden` — and build.
+Then depend on what you use — `@csf//services/candaceos/component`,
+`@csf//pkg/gotth/live`, `@csf//services/warden` — and build.
 
 Not a Bazel repository? The module path is the repository path:
 
 ```bash
-go get github.com/candacelabs/csf@export-<sha12>
+go get github.com/candacelabs/csf@v0.1.0
 ```
 
-There is no semantic-version tag, so `@latest` resolves a moving pseudo-version
-of the default branch; naming the export tag is what pins a build.
+Use the published semantic version matching your archive, not `@latest`.
+The accompanying `export-<sha12>` tag identifies its exact source snapshot.
 
 [`docs/extending.md`](docs/extending.md) covers both shapes in full, plus the
 `http_archive` fallback and the legacy `WORKSPACE` path.

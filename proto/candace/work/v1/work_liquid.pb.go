@@ -18,6 +18,11 @@ var (
 	_liquidCheckpointTaskUrlRe0         = regexp.MustCompile("^https://github.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*$")
 	_liquidCheckpointRevisionRe0        = regexp.MustCompile("^[a-f0-9]{40}$")
 	_liquidCheckpointTaskFingerprintRe0 = regexp.MustCompile("^[a-f0-9]{64}$")
+	_liquidTicketDependencyIssueUrlRe0  = regexp.MustCompile("^https://github.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*$")
+	_liquidTicketSpecRepositoryRe0      = regexp.MustCompile("^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$")
+	_liquidTicketSpecTitleRe0           = regexp.MustCompile("[^\\s]")
+	_liquidTicketSpecTitleRe1           = regexp.MustCompile("[\\r\\n]")
+	_liquidTicketSpecGoalRe0            = regexp.MustCompile("[^\\s]")
 )
 
 // ValidateEvidence checks this message's annotated fields; it does not recurse.
@@ -113,6 +118,72 @@ func ValidateCheckpoint(message *Checkpoint) error {
 			Field:     "task_fingerprint",
 			Predicate: "matches(this, `^[a-f0-9]{64}$`)",
 			Value:     message.TaskFingerprint,
+		}
+	}
+	return nil
+}
+
+// ValidateTicketDependency checks this message's annotated fields; it does not recurse.
+// A failed predicate returns *liquidproto.Error. Nil input also returns an error.
+func ValidateTicketDependency(message *TicketDependency) error {
+	if message == nil {
+		return fmt.Errorf("ValidateTicketDependency: nil *TicketDependency")
+	}
+	if !(_liquidTicketDependencyIssueUrlRe0.MatchString(message.IssueUrl)) {
+		return &liquidproto.Error{
+			Message:   "candace.work.v1.TicketDependency",
+			Field:     "issue_url",
+			Predicate: "matches(this, `^https://github.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*$`)",
+			Value:     message.IssueUrl,
+		}
+	}
+	if !(message.Condition == 1 || message.Condition == 2 || message.Condition == 3) {
+		return &liquidproto.Error{
+			Message:   "candace.work.v1.TicketDependency",
+			Field:     "condition",
+			Predicate: "this == 1 || this == 2 || this == 3",
+			Value:     message.Condition,
+		}
+	}
+	return nil
+}
+
+// ValidateTicketSpec checks this message's annotated fields; it does not recurse.
+// A failed predicate returns *liquidproto.Error. Nil input also returns an error.
+func ValidateTicketSpec(message *TicketSpec) error {
+	if message == nil {
+		return fmt.Errorf("ValidateTicketSpec: nil *TicketSpec")
+	}
+	if !(message.SchemaVersion == 1) {
+		return &liquidproto.Error{
+			Message:   "candace.work.v1.TicketSpec",
+			Field:     "schema_version",
+			Predicate: "this == 1",
+			Value:     message.SchemaVersion,
+		}
+	}
+	if !(_liquidTicketSpecRepositoryRe0.MatchString(message.Repository)) {
+		return &liquidproto.Error{
+			Message:   "candace.work.v1.TicketSpec",
+			Field:     "repository",
+			Predicate: "matches(this, `^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$`)",
+			Value:     message.Repository,
+		}
+	}
+	if !(len(message.Title) >= 1 && len(message.Title) <= 256 && _liquidTicketSpecTitleRe0.MatchString(message.Title) && !_liquidTicketSpecTitleRe1.MatchString(message.Title)) {
+		return &liquidproto.Error{
+			Message:   "candace.work.v1.TicketSpec",
+			Field:     "title",
+			Predicate: "len(this) >= 1 && len(this) <= 256 && matches(this, `[^\\s]`) && !matches(this, `[\\r\\n]`)",
+			Value:     message.Title,
+		}
+	}
+	if !(len(message.Goal) >= 1 && len(message.Goal) <= 8192 && _liquidTicketSpecGoalRe0.MatchString(message.Goal)) {
+		return &liquidproto.Error{
+			Message:   "candace.work.v1.TicketSpec",
+			Field:     "goal",
+			Predicate: "len(this) >= 1 && len(this) <= 8192 && matches(this, `[^\\s]`)",
+			Value:     message.Goal,
 		}
 	}
 	return nil

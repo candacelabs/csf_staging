@@ -11,14 +11,14 @@ Everything under [`_workspace/`](_workspace) is that repository. The leading
 underscore keeps it out of both toolchains that would otherwise claim it: the
 `go` command ignores such a directory, and `.bazelignore` stops Bazel from
 reading its `BUILD.bazel` files as packages of this module. They are not — they
-belong to a build that resolves `@candace` to a downloaded archive.
+belong to a build that resolves `@csf` to a downloaded archive.
 
 ## What it proves
 
 Core resolves its extension points at compile time; a consumer chooses them by
 handing options to `bootstrap.Run`. Every option that composes behavior is
 exercised here, and every candace package behind them arrives through an
-`@candace//` label pointing at a tarball:
+`@csf//` label pointing at a tarball:
 
 | Seam | What this repository supplies |
 |---|---|
@@ -84,6 +84,10 @@ Each release of `candacelabs/csf` carries a `candace-<sha12>.tar.gz` and its
 so there are two shapes, and this example is built both ways before any archive
 is published.
 
+Public download URLs apply only once the named public release exists. For a
+private staging archive, download it with authenticated access and use a local
+archive URL or the [local Go consumer](../csf-consumer).
+
 **`bazel_dep` + `archive_override` — use this one.**
 [`_workspace/MODULE.archive-override.bazel.in`](_workspace/MODULE.archive-override.bazel.in)
 names the module, pins the exact bytes with Subresource Integrity, and lets
@@ -92,13 +96,13 @@ register the Go SDK its committed BUILD files were generated against, and
 declare the repositories candace packages for itself.
 
 ```python
-bazel_dep(name = "candace", version = "0.0.0")
+bazel_dep(name = "csf", version = "0.1.0")
 
 archive_override(
-    module_name = "candace",
+    module_name = "csf",
     integrity = "sha256-...",          # `integrity` from the packager
     strip_prefix = "candace-<sha12>",  # `strip_prefix` from the packager
-    urls = ["https://github.com/candacelabs/csf/releases/download/export-<sha12>/candace-<sha12>.tar.gz"],
+    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
 )
 ```
 
@@ -110,7 +114,7 @@ way is not a module, so the labels inside candace's BUILD files resolve through
 the *consumer's* mapping. Every repository those files name has to be visible in
 the consumer's `MODULE.bazel`, and a missing one is a build error inside
 candace. The repositories candace declares for itself are the ones that cannot
-be supplied by pasting a `use_repo` block: `@candace//pkg/pgmem` names
+be supplied by pasting a `use_repo` block: `@csf//pkg/pgmem` names
 `@pg_query_go`, a patched archive candace's own `MODULE.bazel` fetches, so in
 this shape it does not resolve at all until the consumer copies that declaration
 too. This shape also has to download the Go SDK itself, because candace

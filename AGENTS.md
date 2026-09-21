@@ -20,7 +20,8 @@ one exact source revision, published as a fresh snapshot with no upstream
 history. The provenance marker `.candace-export.json` records the source
 repository, source path, exact source revision, selected-tree object ID, and
 destination. Each published snapshot also carries an immutable `export-<sha12>`
-tag and a matching GitHub Release. First-party source is Apache-2.0, per the `LICENSE`
+tag and a semantic-version tag; the GitHub Release uses `v<version>`.
+First-party source is Apache-2.0, per the `LICENSE`
 at this root.
 
 Three consequences, and acting against any of them is expensive:
@@ -35,7 +36,8 @@ Three consequences, and acting against any of them is expensive:
   If you cannot reach it, say exactly that and stop. Never commit here, never
   open a PR against this repository, and never fork and patch it as a
   substitute for the upstream change.
-- **Version identity is the export tag.** When citing behavior, cite the
+- **Version identity is immutable.** Use a semantic-version tag for consumption.
+  When tracing exact source behavior, cite the
   `export-<sha12>` tag or the source revision in `.candace-export.json`, never
   a branch. A branch name here means "whatever the last snapshot happened to
   be".
@@ -76,18 +78,18 @@ There is exactly one `go.mod`, at this root. A nested one is a defect, and
 ## Consuming this repository
 
 The unit of consumption is a **deterministic source archive**, not a package
-registry entry. Each `export-<sha12>` Release carries `candace-<sha12>.tar.gz`
+registry entry. Each `v<version>` Release carries `candace-<sha12>.tar.gz`
 and its `.sha256`; the tarball is this tree re-rooted so `MODULE.bazel` sits at
 the archive root, built twice and byte-compared before it is kept.
 
 ```python
-bazel_dep(name = "candace", version = "0.0.0")
+bazel_dep(name = "csf", version = "0.1.0")
 
 archive_override(
-    module_name = "candace",
+    module_name = "csf",
     integrity = "sha256-...",
     strip_prefix = "candace-<sha12>",
-    urls = ["https://github.com/candacelabs/csf/releases/download/export-<sha12>/candace-<sha12>.tar.gz"],
+    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
 )
 ```
 
@@ -95,8 +97,9 @@ That is the recommended shape. A plain `use_repo_rule` `http_archive` also
 works and costs one thing: a non-module repository resolves candace's BUILD
 labels through *your* repository mapping, so you mirror candace's own
 `use_repo(go_deps, ...)` list. A Go-only consumer needs neither:
-`go get github.com/candacelabs/csf@export-<sha12>` works, because the
-module path is the repository path.
+`go get github.com/candacelabs/csf@v0.1.0` applies after that public release
+exists. Private staging does not publish this public module tag; use the
+[local-archive path](examples/csf-consumer) and preserve the public import path.
 
 [`examples/external-consumer`](examples/external-consumer) is the worked
 consumer and the acceptance test every archive passes before publication — it
@@ -122,7 +125,7 @@ the guide that walks all four.
 Every row is also proven from *outside* this module.
 [`examples/external-consumer`](examples/external-consumer) composes every option
 named above into one binary and a service of its own, resolving each package
-through an `@candace//` label pointing at a downloaded archive rather than a
+through an `@csf//` label pointing at a downloaded archive rather than a
 relative one; its whole workspace is built and tested in both supported pinning
 shapes before an archive is kept.
 

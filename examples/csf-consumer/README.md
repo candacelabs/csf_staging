@@ -30,7 +30,7 @@ beside your new repository. Copy `main.go`, `consumer_test.go` and
 ```sh
 git init
 go mod init example.invalid/my-csf-host
-go mod edit -require=github.com/candacelabs/csf@v0.0.0
+go mod edit -require=github.com/candacelabs/csf@v0.1.0
 go mod edit -replace=github.com/candacelabs/csf=../candace-<sha12>
 go mod tidy
 go mod vendor
@@ -41,8 +41,10 @@ go build -mod=vendor -o my-csf-host .
 
 Replace `<sha12>` with the archive's actual directory name. The `replace`
 selects the verified extraction while resolving dependencies; the vendored
-build needs only your repository. When consuming a published export tag instead,
-use `go get github.com/candacelabs/csf@export-<sha12>` and omit that replace.
+build needs only your repository. This path also works for an authenticated
+download from private staging. Only after the version is published to the
+public module repository, use `go get github.com/candacelabs/csf@v0.1.0`
+and omit that replace. A staging release alone does not make that command valid.
 
 The repeatable acceptance command creates this separate Git repository itself:
 
@@ -68,9 +70,9 @@ pinned Go container. It does not deploy anything.
 The same archive is a Bazel module. A consumer's `MODULE.bazel` can select it:
 
 ```starlark
-bazel_dep(name = "candace", version = "0.0.0")
+bazel_dep(name = "csf", version = "0.1.0")
 archive_override(
-    module_name = "candace",
+    module_name = "csf",
     integrity = "sha256-<archive integrity>",
     strip_prefix = "candace-<sha12>",
     urls = ["https://example.invalid/releases/candace-<sha12>.tar.gz"],
@@ -78,8 +80,8 @@ archive_override(
 ```
 
 Use the actual release URL and integrity from your archive receipt. The public
-labels used by this host are `@candace//csf`, `@candace//pkg/httpserver`, and
-`@candace//proto/candace/brainspine/v1:brainspine`. The existing
+labels used by this host are `@csf//csf`, `@csf//pkg/httpserver`, and
+`@csf//proto/candace/brainspine/v1:brainspine`. The existing
 [external-consumer guide](../external-consumer/README.md) explains dependency
 mapping and the complete `archive_override` consumer setup.
 

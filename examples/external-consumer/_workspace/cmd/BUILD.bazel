@@ -5,6 +5,6 @@ go_binary(
     srcs = ["main.go"],
     deps = [
         "//composition",
-        "@candace//app/candaceos-core/bootstrap",
+        "@csf//app/candaceos-core/bootstrap",
     ],
 )

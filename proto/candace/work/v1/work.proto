@@ -60,6 +60,7 @@ message SourceIssue {
   string state = 4;
   string body = 5;
   google.protobuf.Timestamp updated_at = 6;
+  int64 id = 7;
 }
 
 message SourceComment {
@@ -95,4 +96,39 @@ message ResumeRecord {
 message ProgramSnapshot {
   repeated ResumeRecord tasks = 1;
   google.protobuf.Timestamp checked_at = 2;
+}
+
+// Dependencies describe prerequisites and the available development paths.
+enum DependencyCondition {
+  DEPENDENCY_CONDITION_UNSPECIFIED = 0;
+  DEPENDENCY_CONDITION_COMPLETED = 1;
+  DEPENDENCY_CONDITION_IMPLEMENTATION_MERGED = 2;
+  // Create a new worktree on the prerequisite implementation and stack changes,
+  // or wait for that implementation to merge. This is not a blocking relation.
+  DEPENDENCY_CONDITION_STACKED_OR_MERGED = 3;
+}
+
+message TicketDependency {
+  string issue_url = 1 [(candace.liquid.v1.field) = {expr: "matches(this, `^https://github.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*$`)"}];
+  DependencyCondition condition = 2 [(candace.liquid.v1.field) = {expr: "this == 1 || this == 2 || this == 3"}];
+}
+
+// Author input shared by template, preview and creation. Repeated-field
+// constraints are checked by the consumer; Liquid Proto refines scalar fields.
+message TicketSpec {
+  uint32 schema_version = 1 [(candace.liquid.v1.field) = {expr: "this == 1"}];
+  string repository = 2 [(candace.liquid.v1.field) = {expr: "matches(this, `^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$`)"}];
+  string title = 3 [(candace.liquid.v1.field) = {expr: "len(this) >= 1 && len(this) <= 256 && matches(this, `[^\\s]`) && !matches(this, `[\\r\\n]`)"}];
+  string goal = 4 [(candace.liquid.v1.field) = {expr: "len(this) >= 1 && len(this) <= 8192 && matches(this, `[^\\s]`)"}];
+  repeated string scope = 5;
+  repeated string acceptance = 6;
+  repeated TicketDependency dependencies = 7;
+}
+
+// Returned even when creation succeeds but attaching a dependency fails, so
+// callers retain the created issue identity and can reconcile it without a retry.
+message TicketReceipt {
+  SourceIssue issue = 1;
+  // Only dependencies attached through GitHub's native blocked-by API.
+  repeated TicketDependency linked_dependencies = 2;
 }

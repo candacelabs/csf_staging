@@ -29,10 +29,14 @@ rules it obeys.
 
 This repository is generated: it is the tracked `candace/` tree of a private
 monorepo, published as a fresh snapshot with no history. Every published
-snapshot carries an immutable `export-<sha12>` tag and a matching GitHub
-Release, and each Release carries a deterministic source archive,
+snapshot carries immutable `export-<sha12>` and `v<version>` tags. The GitHub
+Release uses `v<version>` and carries a deterministic source archive,
 `candace-<sha12>.tar.gz`, with its `.sha256` beside it. That archive is the
 consumption artifact.
+
+The public commands below require an actually published public version.
+For private staging, use the [authenticated local-archive path](../examples/csf-consumer);
+the public Go module identity does not change to the staging repository name.
 
 The archive is the tracked tree re-rooted so `MODULE.bazel` sits at the archive
 root. Nothing is generated, stripped, or rewritten at packaging time, because
@@ -64,13 +68,13 @@ explains the choice:
   yours.
 
   ```python
-  bazel_dep(name = "candace", version = "0.0.0")
+  bazel_dep(name = "csf", version = "0.1.0")
 
   archive_override(
-      module_name = "candace",
+      module_name = "csf",
       integrity = "sha256-...",          # verified archive's base64 SRI value
       strip_prefix = "candace-<sha12>",
-      urls = ["https://github.com/candacelabs/csf/releases/download/export-<sha12>/candace-<sha12>.tar.gz"],
+      urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
   )
   ```
 
@@ -98,14 +102,13 @@ The module path is the repository path, so the `go` command needs nothing
 special:
 
 ```bash
-go get github.com/candacelabs/csf@export-<sha12>
+go get github.com/candacelabs/csf@v0.1.0
 ```
 
-There is no semantic-version tag. `@latest` therefore resolves a pseudo-version
-of the default branch, which moves with each snapshot; naming the export tag
-pins the exact revision the Release documents, and is what a reproducible build
-should say. A Go-only consumer gets every package here, but not the Bazel
-targets, the committed BUILD files, or the Rust workspace under `xetcas/`.
+Pin the published semantic version rather than the moving `@latest` selection.
+The Release also records its immutable `export-<sha12>` provenance tag.
+The Go toolchain builds Go packages; Bazel and Cargo remain available for their
+respective build targets and the Rust workspace under `xetcas/`.
 
 ---
 
@@ -251,7 +254,7 @@ go_library(
     srcs = ["steering.go"],
     importpath = "example.com/candace-external-consumer/steering",
     visibility = ["//visibility:public"],
-    deps = ["@candace//services/candaceos/component"],
+    deps = ["@csf//services/candaceos/component"],
 )
 ```
 

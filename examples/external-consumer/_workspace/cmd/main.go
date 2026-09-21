@@ -2,7 +2,7 @@
 //
 // It is a complete extending product, linked from a repository that has never
 // seen candace's source tree: every candace package it uses arrives through
-// @candace// labels resolved from one pinned archive. Nothing is loaded at
+// @csf// labels resolved from one pinned archive. Nothing is loaded at
 // runtime — Core's extension points are compile-time seams, and this binary is
 // what choosing all of them at once looks like:
 //
