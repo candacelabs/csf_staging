@@ -24,13 +24,14 @@ jobs:
           persist-credentials: false
       - name: Build and test csfc
         env:
-          CANDACE_BAZEL_WORKSPACE: ${{ github.workspace }}/csf/compiler
+          # The exported repository's MODULE.bazel is at its root. The
+          # compiler is a package below that module, not a nested workspace.
+          CANDACE_BAZEL_WORKSPACE: ${{ github.workspace }}
         run: >-
-          bash tools/bazel.sh test //...
+          bash tools/bazel.sh test //csf/compiler/...
           --lockfile_mode=error --test_output=errors --nobuild_tests_only --jobs=2
       - name: Check the shipped compiler example
-        working-directory: csf/compiler
-        run: ./bazel-bin/bin/csfc check-generated
+        run: bazel-bin/csf/compiler/bin/csfc check-generated
       - name: Bootstrap pinned Lean and compile the verifier stub
         run: |
           bash csf/examples/proof/check.sh
