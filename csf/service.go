@@ -93,6 +93,7 @@ type Service struct {
 	dashboard           *Dashboard
 	theme               *workbenchTheme
 	agentConfigurations IAgentConfigurationStore
+	email               IEmailSender
 	mcp                 *mcp.Server
 	routes              []route
 }

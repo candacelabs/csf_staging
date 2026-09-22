@@ -1,9 +1,12 @@
 # warden — candacenet fleet watchdog
 
 warden is a small daemon that runs on every node of the candacenet fleet and
-watches the fleet for it. The nodes elect a leader among themselves; the leader
-continuously checks that every other node is alive and **emails the operator
-when a node dies** (and, optionally, when it recovers). Each node also serves a
+watches the fleet for it. With no configured default leader, the nodes elect a
+leader among themselves; that leader continuously checks that every other node
+is alive and **emails the operator when a node dies** (and, optionally, when it
+recovers). A static configuration can instead name one default leader: followers
+then report only their own observed inability to reach that node, with no
+automatic takeover. Each node also serves a
 live dashboard, a JSON status API, and Prometheus metrics on a single HTTP
 port.
 
@@ -384,6 +387,8 @@ Exposed at `/metrics`:
 | `warden_observers`        | Number of verified non-voting observers                    |
 | `warden_discovered`       | Discovered candidates not yet verified/admitted            |
 | `warden_peer_member`      | Per peer + member label: one-hot membership kind           |
+| `csf_email_send_total` | SMTP receipt outcomes; acceptance is not inbox delivery |
+| `csf_email_send_duration_seconds` | SMTP receipt-attempt duration by bounded outcome |
 
 The cluster-scoped membership gauges are deliberately unlabeled (same
 convention as `warden_view_authoritative`): each node serves its own
@@ -401,10 +406,12 @@ for annotated copies.
 | `bind`                       | `WARDEN_BIND`                  | `:7717`             | HTTP listen address. |
 | `data_dir`                   | `WARDEN_DATA_DIR`              | `/var/lib/warden`   | Election state at `<data_dir>/state.json`. |
 | `peers`                      | `WARDEN_PEERS`                 | *(none)*            | Member SEED (incl. self); env form `id=host:port,...`. **Required** — warden compiles in no fleet — and required even in dynamic discovery modes. |
+| `leader_id`                  | `WARDEN_LEADER_ID`             | *(empty)*           | Optional default leader from `peers`. Requires `discovery.mode=static`. Empty retains legacy election/leader alerting. |
 | `advertise_addr`             | `WARDEN_ADVERTISE_ADDR`        | *(= `bind`)*        | This node's routable `ip:port`. Only used by a discovery-mode joiner whose `node_id` is not yet in `peers`; then it must have a real host. |
 | `log_level`                  | `WARDEN_LOG_LEVEL`             | `info`              | `debug`\|`info`\|`warn`\|`error`. |
 | *(n/a)*                      | `WARDEN_LOG_FORMAT`            | *(json)*            | `console` for human logs; else JSON. |
 | *(n/a)*                      | `WARDEN_CONFIG`                | *(none)*            | Default `-config` path. |
+| *(n/a)*                      | *(none)*                       | *(none)*            | `-email-provenance`: optional private protobuf-JSON deployment facts for SMTP receipts. |
 | `timing.heartbeat_interval`  | `WARDEN_HEARTBEAT_INTERVAL`    | `1s`                | Leader→peer heartbeat cadence. |
 | `timing.suspect_after`       | `WARDEN_SUSPECT_AFTER`         | `5s`                | Silence before a peer is `suspect`. |
 | `timing.dead_after`          | `WARDEN_DEAD_AFTER`            | `15s`               | Silence before a peer is `dead` (raises incident). |
@@ -446,6 +453,24 @@ intervals `> 0`; `mode=tailscale` requires `tag` or `host_pattern`;
 The `node_id`-must-be-in-`peers` rule holds in **static** mode; in a dynamic
 mode a `node_id` absent from `peers` is a joiner and instead requires a routable
 `advertise_addr`.
+
+### Configured default leader: observation, not failover
+
+Set `leader_id` to the id of a node in the predefined static `peers` list when
+one node is deliberately the default leader. It is not a built-in fleet choice:
+every deployment chooses its own id, and the same `leader_id` must be present in
+each node's static configuration. Dynamic discovery is rejected for this policy.
+
+When the configured leader becomes unreachable, each configured **follower**
+may send an incident naming that follower as the reporter. It is an observation
+of local unreachability since the last heartbeat (or startup), not a claim that
+the configured leader physically died. Followers never become leaders or
+authoritative because of that observation; Warden performs **no automatic
+takeover**. Cached leader views and reports about other peers do not alert.
+
+To move the default leader, manually change `leader_id` in the static
+configuration on every node and perform the planned rolling restart. That
+operator action, rather than reachability, is the only way to change it.
 
 Two derived timings have no config knob and are computed in `cmd/main.go`:
 `ViewFreshFor = dead_after` (how long a follower trusts the leader's cached
@@ -513,6 +538,30 @@ For Gmail delivery:
 - Keep `SMTP_PASS` in the environment (`/etc/warden/warden.env` or the compose
   `.env`), never in `warden.yaml`.
 
+### SMTP receipt provenance
+
+When `notify.mode=smtp`, Warden records a bounded receipt before and after each
+SMTP attempt under `<data_dir>/email-receipts`. If that private directory cannot
+be prepared, Warden refuses to start rather than sending mail without receipt
+evidence. `csf_email_send_total` and `csf_email_send_duration_seconds` share the
+same private Prometheus registry as the Warden metrics and are exposed at this
+node's `/metrics` endpoint.
+
+The receipt reporter is always a local runtime fact: Warden records its own
+configured node id and address plus the hostname read when the daemon starts.
+It does not inspect Docker, sockets, containers, or unrelated sessions. The
+receipt explicitly marks container observation unavailable; missing build
+version or source-revision facts are likewise marked unavailable rather than
+inferred from the display-only `-version` value.
+
+An operator may supply `-email-provenance /etc/warden/email-provenance.json`.
+The file must be a regular file, at most 1 MiB, and readable only by its owner.
+It is protobuf JSON for `ReceiptMetadata`, but Warden copies only its configured
+CSF version, source revision, and evidence links. Its reporting node, sessions,
+containers, and other observation fields are ignored: those deployment-provided
+facts are not observations of running containers, and they cannot override the
+actual reporting node. Runtime build metadata takes precedence when available.
+
 ## Troubleshooting
 
 - **No leader / constant re-elections.** Usually connectivity: confirm every
@@ -534,6 +583,10 @@ For Gmail delivery:
   for delivery errors. Remember the **cooldown** (default 10m) suppresses repeat
   notifications for the same peer, and only the **leader** notifies — check
   which node is leader (`warden_is_leader 1`).
+- **Configured leader alerting is silent.** Confirm every node has the same
+  static `leader_id`, the reporting node is a follower, and its local view has
+  aged the configured leader past `dead_after`. This alert reports
+  unreachability only; it does not elect a replacement.
 - **Every node shows `authoritative: false`.** No fresh leader view is
   reaching them — either the cluster is leaderless (see the first item) or this
   node is partitioned away from the leader.
@@ -558,6 +611,10 @@ For Gmail delivery:
   new leader (on the majority side) takes over. Consequence: warden never
   emails about a *true* simultaneous majority outage — pair it with an
   external uptime check if that case matters to you.
+- **Configured follower alerts remain local observations.** With `leader_id`
+  set, cooldown, retry, dedup, and recovery still apply, but only the named
+  leader can trigger an incident and the reporter is the follower that lost
+  contact. No quorum is inferred and no physical-death claim is made.
 
 ## Layout
 

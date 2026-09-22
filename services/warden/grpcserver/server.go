@@ -18,9 +18,11 @@ import (
 
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 
 	core "github.com/candacelabs/csf/pkg/core"
 	"github.com/candacelabs/csf/services/warden"
+	"github.com/candacelabs/csf/services/warden/internal/transportidentity"
 	wardenv1 "github.com/candacelabs/csf/services/warden/proto/warden/v1"
 	"github.com/candacelabs/csf/services/warden/wireconv"
 )
@@ -84,6 +86,12 @@ func (s *Server) Vote(ctx context.Context, req *wardenv1.VoteRequest) (*wardenv1
 func (s *Server) Heartbeat(ctx context.Context, req *wardenv1.HeartbeatRequest) (*wardenv1.HeartbeatResponse, error) {
 	if req.GetLeaderId() == "" {
 		return nil, errMissingLeaderID
+	}
+	// Shadow any value a caller or upstream interceptor placed in the context:
+	// only this transport adapter may bind the request to its network peer.
+	ctx = transportidentity.WithPeerAddress(ctx, "")
+	if transportPeer, ok := peer.FromContext(ctx); ok && transportPeer.Addr != nil {
+		ctx = transportidentity.WithPeerAddress(ctx, transportPeer.Addr.String())
 	}
 	resp := s.rpc.HandleHeartbeat(ctx, wireconv.HeartbeatRequestFromProto(req))
 	return wireconv.HeartbeatResponseToProto(resp), nil

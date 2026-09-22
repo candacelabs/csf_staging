@@ -1,10 +1,13 @@
 package election
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"hash/fnv"
 	"math/rand"
+	"net"
+	"net/netip"
 	"time"
 
 	"github.com/candacelabs/csf/pkg/core"
@@ -13,13 +16,15 @@ import (
 
 // Package-level errors returned by NewManager.
 var (
-	ErrNoTransport = errors.New("election: transport is nil")
-	ErrNoStore     = errors.New("election: store is nil")
-	ErrNoClock     = errors.New("election: clock is nil")
-	ErrNoSelf      = errors.New("election: Self.ID is empty")
-	ErrNoPeers     = errors.New("election: Peers is empty")
-	ErrSelfMissing = errors.New("election: Self is not a member of Peers")
-	ErrDuplicate   = errors.New("election: duplicate node id in Peers")
+	ErrNoTransport     = errors.New("election: transport is nil")
+	ErrNoStore         = errors.New("election: store is nil")
+	ErrNoClock         = errors.New("election: clock is nil")
+	ErrNoSelf          = errors.New("election: Self.ID is empty")
+	ErrNoPeers         = errors.New("election: Peers is empty")
+	ErrSelfMissing     = errors.New("election: Self is not a member of Peers")
+	ErrDuplicate       = errors.New("election: duplicate node id in Peers")
+	ErrLeaderMissing   = errors.New("election: LeaderID is not a member of Peers")
+	ErrLeaderDiscovery = errors.New("election: LeaderID cannot be combined with discovery")
 )
 
 // Config configures a Manager. Zero-valued durations receive documented
@@ -28,6 +33,10 @@ var (
 type Config struct {
 	Self  warden.Node
 	Peers []warden.Node // full cluster member list INCLUDING Self
+	// LeaderID enables fixed-leader mode. The configured node is the only node
+	// that may campaign or receive votes; other nodes never take over. Empty
+	// preserves the legacy election behavior.
+	LeaderID warden.NodeID
 
 	HeartbeatInterval  time.Duration // default 1s
 	SuspectAfter       time.Duration // default 5s
@@ -121,6 +130,7 @@ func validateConfig(cfg Config, tr warden.ITransport, st warden.IStore, clock wa
 	}
 	seen := make(map[warden.NodeID]bool, len(cfg.Peers))
 	found := false
+	leaderFound := false
 	for _, p := range cfg.Peers {
 		if seen[p.ID] {
 			return fmt.Errorf("%w: %q", ErrDuplicate, p.ID)
@@ -128,6 +138,17 @@ func validateConfig(cfg Config, tr warden.ITransport, st warden.IStore, clock wa
 		seen[p.ID] = true
 		if p.ID == cfg.Self.ID {
 			found = true
+		}
+		if p.ID == cfg.LeaderID {
+			leaderFound = true
+		}
+	}
+	if cfg.LeaderID != "" {
+		if cfg.Discoverer != nil {
+			return ErrLeaderDiscovery
+		}
+		if !leaderFound {
+			return fmt.Errorf("%w: %q", ErrLeaderMissing, cfg.LeaderID)
 		}
 	}
 	// In STATIC mode Self must be one of the static peers. In DISCOVERY mode a
@@ -160,8 +181,14 @@ func NewManager(cfg Config, tr warden.ITransport, st warden.IStore, clock warden
 	peers := make([]warden.Node, len(cfg.Peers))
 	copy(peers, cfg.Peers)
 	warden.SortNodes(peers)
-
 	discoveryMode := cfg.Discoverer != nil
+	trustedPeerHosts := make(map[warden.NodeID]map[string]struct{})
+	if !discoveryMode {
+		trustedPeerHosts, err = resolveTrustedPeerHosts(context.Background(), peers, cfg.RPCTimeout)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// Seed the effective voting membership.
 	//   STATIC:    Version 0, Voters == Peers exactly (Version inert; any
@@ -181,31 +208,78 @@ func NewManager(cfg Config, tr warden.ITransport, st warden.IStore, clock warden
 	}
 
 	m := &Manager{
-		cfg:             cfg,
-		self:            cfg.Self,
-		discoveryMode:   discoveryMode,
-		membership:      membership,
-		publishInterval: cfg.HeartbeatInterval,
-		transport:       tr,
-		store:           st,
-		clock:           clock,
-		log:             core.Logger,
-		rng:             rand.New(rand.NewSource(seedFor(cfg.Self.ID) ^ clock.Now().UnixNano())),
-		role:            warden.RoleFollower,
-		lastContact:     make(map[warden.NodeID]time.Time),
-		latencyMS:       make(map[warden.NodeID]float64),
-		candidates:      make(map[warden.NodeID]*candidate),
-		ackedVersion:    make(map[warden.NodeID]ackRef),
-		subs:            make(map[int]chan warden.ClusterView),
-		events:          make(chan any, eventBuffer),
-		done:            make(chan struct{}),
-		rpc:             newInflightTracker(),
+		cfg:              cfg,
+		self:             cfg.Self,
+		discoveryMode:    discoveryMode,
+		membership:       membership,
+		publishInterval:  cfg.HeartbeatInterval,
+		transport:        tr,
+		store:            st,
+		clock:            clock,
+		log:              core.Logger,
+		trustedPeerHosts: trustedPeerHosts,
+		rng:              rand.New(rand.NewSource(seedFor(cfg.Self.ID) ^ clock.Now().UnixNano())),
+		role:             warden.RoleFollower,
+		lastContact:      make(map[warden.NodeID]time.Time),
+		latencyMS:        make(map[warden.NodeID]float64),
+		candidates:       make(map[warden.NodeID]*candidate),
+		ackedVersion:     make(map[warden.NodeID]ackRef),
+		subs:             make(map[int]chan warden.ClusterView),
+		events:           make(chan any, eventBuffer),
+		done:             make(chan struct{}),
+		rpc:              newInflightTracker(),
 	}
 	if ok {
 		m.currentTerm = ps.CurrentTerm
 		m.votedFor = ps.VotedFor
 	}
+	if cfg.LeaderID != "" {
+		m.leaderID = cfg.LeaderID
+	}
 	return m, nil
+}
+
+// resolveTrustedPeerHosts resolves trusted membership addresses outside the
+// event loop: once at construction in static mode, and from a snapshot of the
+// current admitted membership for a discovery heartbeat. Literal IPs avoid DNS;
+// hostname lookups obey the caller's context and the existing RPC timeout.
+// The request's proposed membership never supplies these addresses.
+// Bare addresses are retained only for the in-memory election
+// simulator, whose transport uses those same opaque addresses and opens no
+// network connection.
+func resolveTrustedPeerHosts(ctx context.Context, peers []warden.Node, timeout time.Duration) (map[warden.NodeID]map[string]struct{}, error) {
+	trusted := make(map[warden.NodeID]map[string]struct{}, len(peers))
+	for _, peer := range peers {
+		host, _, err := net.SplitHostPort(peer.Addr)
+		if err != nil {
+			host, ok := transportHost(peer.Addr)
+			if !ok {
+				return nil, fmt.Errorf("election: peer %q has no usable identity address %q", peer.ID, peer.Addr)
+			}
+			trusted[peer.ID] = map[string]struct{}{host: {}}
+			continue
+		}
+
+		hosts := make(map[string]struct{})
+		if address, err := netip.ParseAddr(host); err == nil {
+			hosts[address.Unmap().String()] = struct{}{}
+		} else {
+			lookupCtx, cancel := context.WithTimeout(ctx, timeout)
+			addresses, lookupErr := net.DefaultResolver.LookupNetIP(lookupCtx, "ip", host)
+			cancel()
+			if lookupErr != nil {
+				return nil, fmt.Errorf("election: resolving configured peer %q host %q: %w", peer.ID, host, lookupErr)
+			}
+			for _, address := range addresses {
+				hosts[address.Unmap().String()] = struct{}{}
+			}
+		}
+		if len(hosts) == 0 {
+			return nil, fmt.Errorf("election: configured peer %q host %q resolved to no addresses", peer.ID, host)
+		}
+		trusted[peer.ID] = hosts
+	}
+	return trusted, nil
 }
 
 // seedFor derives a PRNG seed component from a node ID so that different

@@ -63,18 +63,41 @@ type Metrics struct {
 	handler  http.Handler
 }
 
-// New builds a Metrics backed by a private registry containing the warden view
-// collector plus the standard Go runtime and process collectors.
-func New(view warden.IViewSource) *Metrics {
-	reg := prometheus.NewRegistry()
-	reg.MustRegister(
+// Option configures Metrics before construction.
+type Option func(config *metricsConfig)
+
+type metricsConfig struct {
+	registry *prometheus.Registry
+}
+
+// WithRegistry makes Metrics register and serve from registry. A nil registry
+// retains the private-registry default.
+func WithRegistry(registry *prometheus.Registry) Option {
+	return func(config *metricsConfig) { config.registry = registry }
+}
+
+// New builds Metrics containing the warden view collector plus the standard Go
+// runtime and process collectors. Without WithRegistry it creates a private
+// registry, preserving the standalone default.
+func New(view warden.IViewSource, options ...Option) *Metrics {
+	config := metricsConfig{}
+	for _, option := range options {
+		if option != nil {
+			option(&config)
+		}
+	}
+	registry := config.registry
+	if registry == nil {
+		registry = prometheus.NewRegistry()
+	}
+	registry.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		newViewCollector(view),
 	)
 	return &Metrics{
-		registry: reg,
-		handler:  promhttp.HandlerFor(reg, promhttp.HandlerOpts{}),
+		registry: registry,
+		handler:  promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	}
 }
 

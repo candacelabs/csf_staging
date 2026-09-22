@@ -2,43 +2,42 @@ package notify
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
-	"net/smtp"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/candacelabs/csf/pkg/core"
+	emailv1 "github.com/candacelabs/csf/proto/candace/email/v1"
+	provenancev1 "github.com/candacelabs/csf/proto/candace/provenance/v1"
+	sharedemail "github.com/candacelabs/csf/services/email"
 	"github.com/candacelabs/csf/services/warden"
 )
 
-// Errors returned by the SMTP notifier and message builder.
 var (
-	// ErrSTARTTLSRequired means the server did not advertise STARTTLS; the
-	// notifier fails closed rather than send credentials or mail in cleartext.
-	ErrSTARTTLSRequired = errors.New("notify: smtp server does not advertise STARTTLS")
-	// ErrAuthUnsupported means credentials were configured but the server did
-	// not advertise AUTH after STARTTLS.
-	ErrAuthUnsupported = errors.New("notify: smtp server does not advertise AUTH")
-	// ErrNoRecipients means no To address was configured.
-	ErrNoRecipients = errors.New("notify: no recipients configured")
-	// ErrNoSender means no From address was configured.
-	ErrNoSender = errors.New("notify: no From address configured")
-	// ErrHeaderInjection means a header-contributing field held a CR or LF.
-	ErrHeaderInjection = errors.New("notify: header field contains a CR or LF")
+	// Compatibility aliases preserve errors.Is behavior for existing callers.
+	ErrSTARTTLSRequired = sharedemail.ErrSTARTTLSRequired
+	ErrAuthUnsupported  = sharedemail.ErrAuthUnsupported
+	ErrNoRecipients     = sharedemail.ErrNoRecipients
+	ErrNoSender         = sharedemail.ErrNoSender
+	ErrHeaderInjection  = sharedemail.ErrHeaderInjection
 )
 
 const (
-	smtpDialTimeout = 10 * time.Second
-	smtpDeadline    = 30 * time.Second
+	defaultVersionUnavailable    = "csf version unknown"
+	defaultContainersUnavailable = "container observations unavailable"
+	defaultSessionsUnavailable   = "associated sessions unavailable"
+	hostProvenanceUnavailable    = "host provenance unavailable"
+	// EmailMessage.subject is bounded in proto/candace/email/v1/email.proto.
+	maxSubjectBytes = 256
+	subjectEllipsis = "..."
 )
 
-// SMTPConfig configures the SMTP notifier. Username may be empty to skip AUTH
-// (e.g. an internal relay that authenticates by network).
+// SMTPConfig preserves the Warden configuration surface while delegating
+// transport and message policy to services/email.
 type SMTPConfig struct {
 	Host     string
 	Port     int
@@ -48,244 +47,240 @@ type SMTPConfig struct {
 	To       []string
 }
 
-// SMTPNotifier sends incident emails over SMTP with STARTTLS. It holds only
-// immutable configuration, so concurrent Notify calls (each on its own
-// connection) are safe without synchronization.
+type smtpNotifierConfig struct {
+	provenance sharedemail.IProvenanceSource
+	receipts   sharedemail.IReceiptSink
+	registerer prometheus.Registerer
+	transport  sharedemail.ITransport
+	now        func() time.Time
+}
+
+// SMTPOption configures the Warden adapter without changing existing callers.
+type SMTPOption func(config *smtpNotifierConfig) error
+
+// WithProvenance configures host-observed provenance. When absent or failing,
+// the notifier still identifies the incident's ReportedBy node.
+func WithProvenance(source sharedemail.IProvenanceSource) SMTPOption {
+	return func(config *smtpNotifierConfig) error {
+		if source == nil {
+			return sharedemail.ErrNoProvenance
+		}
+		config.provenance = source
+		return nil
+	}
+}
+
+// WithReceiptSink configures durable receipt evidence retention.
+func WithReceiptSink(sink sharedemail.IReceiptSink) SMTPOption {
+	return func(config *smtpNotifierConfig) error {
+		if sink == nil {
+			return sharedemail.ErrNoReceiptSink
+		}
+		config.receipts = sink
+		return nil
+	}
+}
+
+// WithMetrics registers the shared bounded email metrics.
+func WithMetrics(registerer prometheus.Registerer) SMTPOption {
+	return func(config *smtpNotifierConfig) error {
+		if registerer == nil {
+			return errors.New("notify: metrics registerer is nil")
+		}
+		config.registerer = registerer
+		return nil
+	}
+}
+
+func withTransport(transport sharedemail.ITransport) SMTPOption {
+	return func(config *smtpNotifierConfig) error {
+		config.transport = transport
+		return nil
+	}
+}
+
+func withClock(now func() time.Time) SMTPOption {
+	return func(config *smtpNotifierConfig) error {
+		config.now = now
+		return nil
+	}
+}
+
+// TerminalDeliveryError marks an outcome that the watchdog must not blindly
+// retry because the remote server may already have accepted the message.
+type TerminalDeliveryError struct {
+	Outcome   emailv1.DeliveryOutcome
+	ErrorCode string
+	ReceiptID string
+	cause     error
+}
+
+// Error returns a bounded description without SMTP details or addresses.
+func (deliveryError *TerminalDeliveryError) Error() string {
+	return fmt.Sprintf(
+		"warden email terminal outcome %s (receipt %s, code %s)",
+		deliveryError.Outcome.String(),
+		deliveryError.ReceiptID,
+		deliveryError.ErrorCode,
+	)
+}
+
+// Unwrap exposes the underlying operational error to errors.Is/errors.As.
+func (deliveryError *TerminalDeliveryError) Unwrap() error { return deliveryError.cause }
+
+// Retryable prevents blind retransmission of a possibly accepted message.
+func (deliveryError *TerminalDeliveryError) Retryable() bool { return false }
+
+// SMTPNotifier adapts Warden incidents to the shared Mailer.
 type SMTPNotifier struct {
-	cfg SMTPConfig
+	mailer  *sharedemail.Mailer
+	initErr error
 }
 
 var _ warden.INotifier = (*SMTPNotifier)(nil)
 
-// NewSMTPNotifier returns an SMTPNotifier for cfg.
-func NewSMTPNotifier(cfg SMTPConfig) *SMTPNotifier { return &SMTPNotifier{cfg: cfg} }
-
-// Notify builds and sends the incident email. The message is built first so a
-// malformed From/To (e.g. a header-injection attempt) fails before any network
-// contact.
-func (n *SMTPNotifier) Notify(ctx context.Context, inc warden.Incident) error {
-	msg, err := buildMessage(n.cfg.From, n.cfg.To, inc, time.Now())
-	if err != nil {
-		return fmt.Errorf("building message for incident %s: %w", inc.ID, err)
+// NewSMTPNotifier preserves the historical one-argument call while accepting
+// host provenance, durable receipt, and metrics options.
+func NewSMTPNotifier(config SMTPConfig, options ...SMTPOption) *SMTPNotifier {
+	notifierConfig := smtpNotifierConfig{
+		receipts: logReceiptSink{},
+		transport: sharedemail.NewSMTPTransport(sharedemail.SMTPConfig{
+			Host: config.Host, Port: config.Port, Username: config.Username, Password: config.Password,
+		}),
 	}
-	return n.send(ctx, msg)
+	for _, option := range options {
+		if option == nil {
+			return &SMTPNotifier{initErr: errors.New("notify: nil SMTP option")}
+		}
+		if err := option(&notifierConfig); err != nil {
+			return &SMTPNotifier{initErr: err}
+		}
+	}
+	mailerOptions := []sharedemail.Option{
+		sharedemail.WithTransport(notifierConfig.transport),
+		sharedemail.WithProvenance(incidentProvenanceSource{source: notifierConfig.provenance}),
+		sharedemail.WithReceiptSink(notifierConfig.receipts),
+		sharedemail.WithAddresses(config.From, config.To),
+	}
+	if notifierConfig.now != nil {
+		mailerOptions = append(mailerOptions, sharedemail.WithClock(notifierConfig.now))
+	}
+	if notifierConfig.registerer != nil {
+		mailerOptions = append(mailerOptions, sharedemail.WithMetrics(notifierConfig.registerer))
+	}
+	mailer, err := sharedemail.NewMailer(mailerOptions...)
+	return &SMTPNotifier{mailer: mailer, initErr: err}
 }
 
-// send performs the SMTP conversation: dial, EHLO, STARTTLS (mandatory), AUTH
-// (if configured), MAIL/RCPT/DATA, QUIT.
-func (n *SMTPNotifier) send(ctx context.Context, msg []byte) error {
-	addr := net.JoinHostPort(n.cfg.Host, strconv.Itoa(n.cfg.Port))
-
-	dialer := net.Dialer{Timeout: smtpDialTimeout}
-	conn, err := dialer.DialContext(ctx, "tcp", addr)
-	if err != nil {
-		return fmt.Errorf("dialing smtp server %s: %w", addr, err)
+// Notify renders and sends one incident through the shared Mailer.
+func (notifier *SMTPNotifier) Notify(ctx context.Context, incident warden.Incident) error {
+	if notifier.initErr != nil {
+		return notifier.initErr
 	}
-
-	deadline := time.Now().Add(smtpDeadline)
-	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {
-		deadline = d
+	ctx = context.WithValue(ctx, incidentReporterKey{}, incident.ReportedBy)
+	receipt, err := notifier.mailer.Send(ctx, &emailv1.EmailMessage{
+		Subject: buildSubject(incident),
+		Text:    buildBody(incident),
+	})
+	if err == nil {
+		return nil
 	}
-	_ = conn.SetDeadline(deadline)
-
-	// Interrupt blocking I/O promptly if ctx is cancelled (e.g. shutdown), so
-	// this call — and any delivery goroutine waiting on it — never lingers.
-	// The watcher is always cleaned up when send returns via close(stop).
-	stop := make(chan struct{})
-	defer close(stop)
-	go func() {
-		select {
-		case <-ctx.Done():
-			_ = conn.SetDeadline(time.Now())
-		case <-stop:
-		}
-	}()
-
-	c, err := smtp.NewClient(conn, n.cfg.Host)
-	if err != nil {
-		_ = conn.Close()
-		return fmt.Errorf("creating smtp client for %s: %w", addr, err)
-	}
-	defer c.Close()
-
-	if err := c.Hello(ehloName()); err != nil {
-		return fmt.Errorf("smtp EHLO to %s: %w", addr, err)
-	}
-
-	// Fail closed: never transmit credentials or mail over a cleartext link.
-	if ok, _ := c.Extension("STARTTLS"); !ok {
-		return fmt.Errorf("smtp server %s: %w", addr, ErrSTARTTLSRequired)
-	}
-	if err := c.StartTLS(&tls.Config{ServerName: n.cfg.Host}); err != nil {
-		return fmt.Errorf("smtp STARTTLS to %s: %w", addr, err)
-	}
-
-	if n.cfg.Username != "" {
-		if ok, _ := c.Extension("AUTH"); !ok {
-			return fmt.Errorf("smtp server %s: %w", addr, ErrAuthUnsupported)
-		}
-		auth := smtp.PlainAuth("", n.cfg.Username, n.cfg.Password, n.cfg.Host)
-		if err := c.Auth(auth); err != nil {
-			return fmt.Errorf("smtp AUTH to %s: %w", addr, err)
+	if receipt != nil && terminalOutcome(receipt, err) {
+		return &TerminalDeliveryError{
+			Outcome:   receipt.GetOutcome(),
+			ErrorCode: receipt.GetErrorCode(),
+			ReceiptID: receipt.GetProvenance().GetReceiptId(),
+			cause:     err,
 		}
 	}
+	return err
+}
 
-	if err := c.Mail(n.cfg.From); err != nil {
-		return fmt.Errorf("smtp MAIL FROM <%s>: %w", n.cfg.From, err)
-	}
-	for _, rcpt := range n.cfg.To {
-		if err := c.Rcpt(rcpt); err != nil {
-			return fmt.Errorf("smtp RCPT TO <%s>: %w", rcpt, err)
-		}
-	}
+func terminalOutcome(receipt *emailv1.EmailReceipt, err error) bool {
+	return receipt.GetOutcome() == emailv1.DeliveryOutcome_DELIVERY_OUTCOME_ACCEPTED ||
+		receipt.GetOutcome() == emailv1.DeliveryOutcome_DELIVERY_OUTCOME_UNKNOWN ||
+		errors.Is(err, sharedemail.ErrInvalidTransportOutcome)
+}
 
-	wc, err := c.Data()
-	if err != nil {
-		return fmt.Errorf("smtp DATA: %w", err)
+type incidentReporterKey struct{}
+
+type incidentProvenanceSource struct {
+	source sharedemail.IProvenanceSource
+}
+
+func (source incidentProvenanceSource) Snapshot(ctx context.Context) (*provenancev1.ReceiptMetadata, error) {
+	reporter, _ := ctx.Value(incidentReporterKey{}).(warden.NodeID)
+	if source.source == nil {
+		return defaultIncidentMetadata(reporter, ""), nil
 	}
-	if _, err := wc.Write(msg); err != nil {
-		return fmt.Errorf("writing message body: %w", err)
+	metadata, err := source.source.Snapshot(ctx)
+	if err != nil || metadata == nil {
+		return defaultIncidentMetadata(reporter, hostProvenanceUnavailable), nil
 	}
-	if err := wc.Close(); err != nil {
-		return fmt.Errorf("completing DATA: %w", err)
+	metadata = proto.Clone(metadata).(*provenancev1.ReceiptMetadata)
+	if metadata.ReportingNode == nil {
+		metadata.ReportingNode = &provenancev1.NodeIdentity{NodeId: string(reporter)}
 	}
-	if err := c.Quit(); err != nil {
-		return fmt.Errorf("smtp QUIT: %w", err)
+	return metadata, nil
+}
+
+func defaultIncidentMetadata(reporter warden.NodeID, extraUnavailable string) *provenancev1.ReceiptMetadata {
+	unavailable := []string{defaultVersionUnavailable, defaultContainersUnavailable, defaultSessionsUnavailable}
+	if extraUnavailable != "" {
+		unavailable = append(unavailable, extraUnavailable)
 	}
+	return &provenancev1.ReceiptMetadata{
+		ReportingNode: &provenancev1.NodeIdentity{NodeId: string(reporter)},
+		Unavailable:   unavailable,
+	}
+}
+
+type logReceiptSink struct{}
+
+func (logReceiptSink) Record(_ context.Context, receipt *emailv1.EmailReceipt) error {
+	core.Logger.Info().
+		Str("receipt_id", receipt.GetProvenance().GetReceiptId()).
+		Str("outcome", receipt.GetOutcome().String()).
+		Str("error_code", receipt.GetErrorCode()).
+		Msg("warden email receipt (non-durable default sink)")
 	return nil
 }
 
-// buildMessage renders a complete, well-formed RFC 5322 message for inc. It is
-// a pure function: given the same inputs (including date) it produces identical
-// bytes, which makes it exhaustively unit-testable. It rejects From/To
-// addresses containing CR or LF and strips CR/LF from every header value, so a
-// malicious peer identifier cannot inject extra headers.
-func buildMessage(from string, to []string, inc warden.Incident, date time.Time) ([]byte, error) {
-	if strings.TrimSpace(from) == "" {
-		return nil, ErrNoSender
-	}
-	if err := ensureNoCRLF(from); err != nil {
-		return nil, fmt.Errorf("From address: %w", err)
-	}
-	if len(to) == 0 {
-		return nil, ErrNoRecipients
-	}
-	for _, addr := range to {
-		if strings.TrimSpace(addr) == "" {
-			return nil, ErrNoRecipients
-		}
-		if err := ensureNoCRLF(addr); err != nil {
-			return nil, fmt.Errorf("To address %q: %w", addr, err)
-		}
-	}
-
-	var b strings.Builder
-	writeHeader(&b, "From", from)
-	writeHeader(&b, "To", strings.Join(to, ", "))
-	writeHeader(&b, "Subject", buildSubject(inc))
-	writeHeader(&b, "Date", date.Format(time.RFC1123Z))
-	writeHeader(&b, "Message-ID", messageID(inc, date, from))
-	writeHeader(&b, "MIME-Version", "1.0")
-	writeHeader(&b, "Content-Type", `text/plain; charset="utf-8"`)
-	b.WriteString("\r\n")
-	b.WriteString(buildBody(inc))
-	return []byte(b.String()), nil
-}
-
-// ensureNoCRLF rejects header-critical fields (addresses) that contain a CR or
-// LF, the classic email header-injection vector.
-func ensureNoCRLF(s string) error {
-	if strings.ContainsAny(s, "\r\n") {
-		return ErrHeaderInjection
-	}
-	return nil
-}
-
-// stripCRLF removes CR and LF from a string so it can never break out of its
-// header line.
-func stripCRLF(s string) string {
-	return strings.Map(func(r rune) rune {
-		if r == '\r' || r == '\n' {
-			return -1
-		}
-		return r
-	}, s)
-}
-
-// writeHeader appends "Name: value\r\n", defensively stripping CR/LF from the
-// value.
-func writeHeader(b *strings.Builder, name, value string) {
-	b.WriteString(name)
-	b.WriteString(": ")
-	b.WriteString(stripCRLF(value))
-	b.WriteString("\r\n")
-}
-
-func buildSubject(inc warden.Incident) string {
-	switch inc.Type {
+func buildSubject(incident warden.Incident) string {
+	var subject string
+	switch incident.Type {
 	case warden.IncidentPeerDead:
-		return fmt.Sprintf("[warden] peer %s DEAD (term %d)", inc.Peer.ID, inc.Term)
+		subject = fmt.Sprintf("[warden] peer %s DEAD (term %d)", incident.Peer.ID, incident.Term)
 	case warden.IncidentPeerRecovered:
-		return fmt.Sprintf("[warden] peer %s recovered", inc.Peer.ID)
+		subject = fmt.Sprintf("[warden] peer %s recovered", incident.Peer.ID)
 	default:
-		return fmt.Sprintf("[warden] peer %s incident %s (term %d)", inc.Peer.ID, inc.Type, inc.Term)
+		subject = fmt.Sprintf("[warden] peer %s incident %s (term %d)", incident.Peer.ID, incident.Type, incident.Term)
 	}
-}
-
-func buildBody(inc warden.Incident) string {
-	var b strings.Builder
-	b.WriteString("A warden incident was detected on the candacenet fleet.\r\n\r\n")
-	fmt.Fprintf(&b, "Incident:     %s\r\n", inc.Type)
-	fmt.Fprintf(&b, "Incident ID:  %s\r\n", inc.ID)
-	fmt.Fprintf(&b, "Peer:         %s (%s)\r\n", inc.Peer.ID, inc.Peer.Addr)
-	fmt.Fprintf(&b, "Reported by:  %s (leader)\r\n", inc.ReportedBy)
-	fmt.Fprintf(&b, "Term:         %d\r\n", inc.Term)
-	fmt.Fprintf(&b, "Detected at:  %s\r\n", core.FormatTimeOrNever(inc.DetectedAt))
-	fmt.Fprintf(&b, "Last seen:    %s\r\n", core.FormatTimeOrNever(inc.LastSeen))
-	b.WriteString("\r\n")
-	b.WriteString(inc.Message)
-	b.WriteString("\r\n")
-	return b.String()
-}
-
-// messageID builds a deterministic, well-formed Message-ID from the incident
-// ID and date. The local part is sanitized to safe atext characters and the
-// domain is taken from the From address.
-func messageID(inc warden.Incident, date time.Time, from string) string {
-	local := sanitizeMsgIDPart(inc.ID)
-	if local == "" {
-		local = "incident"
+	if len(subject) > maxSubjectBytes {
+		// Drop an incomplete final rune; the body retains the full node identity.
+		subject = strings.ToValidUTF8(subject[:maxSubjectBytes-len(subjectEllipsis)], "") + subjectEllipsis
 	}
-	return fmt.Sprintf("<%s.%d@%s>", local, date.UnixNano(), hostFromAddress(from))
+	return subject
 }
 
-func sanitizeMsgIDPart(s string) string {
-	return strings.Map(func(r rune) rune {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
-			return r
-		case r == '.' || r == '-' || r == '_' || r == '/':
-			return r
-		default:
-			return '_'
-		}
-	}, s)
-}
-
-func hostFromAddress(addr string) string {
-	if i := strings.LastIndex(addr, "@"); i >= 0 && i < len(addr)-1 {
-		if host := strings.TrimSpace(stripCRLF(addr[i+1:])); host != "" {
-			return host
-		}
-	}
-	return "warden.local"
-}
-
-func ehloName() string {
-	if h, err := os.Hostname(); err == nil {
-		if h = strings.TrimSpace(stripCRLF(h)); h != "" {
-			return h
-		}
-	}
-	return "localhost"
+func buildBody(incident warden.Incident) string {
+	return fmt.Sprintf(
+		"A warden incident was detected on the candacenet fleet.\n\n"+
+			"Incident:     %s\n"+
+			"Incident ID:  %s\n"+
+			"Peer:         %s (%s)\n"+
+			"Reported by:  %s\n"+
+			"Term:         %d\n"+
+			"Detected at:  %s\n"+
+			"Last seen:    %s\n\n%s\n",
+		incident.Type,
+		incident.ID,
+		incident.Peer.ID,
+		incident.Peer.Addr,
+		incident.ReportedBy,
+		incident.Term,
+		core.FormatTimeOrNever(incident.DetectedAt),
+		core.FormatTimeOrNever(incident.LastSeen),
+		incident.Message,
+	)
 }

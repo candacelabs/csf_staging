@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Assert the launcher places the optional disk cache after build commands.
+# Assert optional caches reach their actual container and Bazel consumers.
 set -Eeuo pipefail
 
 tool_directory=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
@@ -34,6 +34,13 @@ assert_tail() {
 }
 
 run_wrapper build //...
+assert_tail 3 build --disk_cache=/bazel-home/sharedtaskcache //...
+! grep -F -- 'CSF_OCAML_TOOLCHAIN_ROOT=' "$arguments"
+! grep -F -- ':/csf-ocaml-toolchain' "$arguments"
+
+CANDACE_OCAML_TOOLCHAIN_CACHE="$scratch/installation with spaces" run_wrapper build //...
+grep -Fx -- "$scratch/installation with spaces:/csf-ocaml-toolchain" "$arguments"
+grep -Fx -- 'CSF_OCAML_TOOLCHAIN_ROOT=/csf-ocaml-toolchain' "$arguments"
 assert_tail 3 build --disk_cache=/bazel-home/sharedtaskcache //...
 
 run_wrapper test //tools/example:all

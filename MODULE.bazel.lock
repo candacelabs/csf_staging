@@ -5690,7 +5690,7 @@
     },
     "@@tools_opam+//extensions:opam.bzl%opam": {
       "general": {
-        "bzlTransitiveDigest": "+62LVHnPf1GPreZxiJNJPjwZ9wDZ6/Ui4giJ/RuNqj8=",
+        "bzlTransitiveDigest": "LxWXo+W13kHnwEI1Lx/pgNGCLeZMRpmuufmGZJ/Bi5U=",
         "usagesDigest": "O/ahYy9H+J2j+9Ipq8X75ZAlM6I1aHFtORcy4N1pZtc=",
         "recordedInputs": [
           "REPO_MAPPING:tools_opam+,bazel_skylib bazel_skylib+",
@@ -5699,10 +5699,72 @@
           "ENV:OBAZL_OPAM_ENV \\0"
         ],
         "generatedRepoSpecs": {
+          "opam.compiler": {
+            "repoRuleId": "@@tools_opam+//extensions:opam.bzl%opam_compiler",
+            "attributes": {
+              "opam_version": "2.3.0",
+              "ocaml_version": "5.3.0",
+              "locked_versions": {
+                "base": "v0.17.3",
+                "base-bigarray": "base",
+                "base-bytes": "base",
+                "base-domains": "base",
+                "base-effects": "base",
+                "base-nnp": "base",
+                "base-threads": "base",
+                "base-unix": "base",
+                "calendar": "3.0.0",
+                "camlp-streams": "5.0.1",
+                "cmdliner": "2.1.1",
+                "cppo": "1.8.0",
+                "csexp": "1.5.2",
+                "cstruct": "6.3.0",
+                "csv": "2.4",
+                "dune": "3.24.2",
+                "dune-configurator": "3.24.2",
+                "fmt": "0.11.0",
+                "hex": "1.5.0",
+                "num": "1.6",
+                "ocaml": "5.3.0",
+                "ocaml-base-compiler": "5.3.0",
+                "ocaml-compiler": "5.3.0",
+                "ocaml-compiler-libs": "v0.17.0",
+                "ocaml-config": "3",
+                "ocaml-options-vanilla": "1",
+                "ocaml_intrinsics_kernel": "v0.17.2",
+                "ocamlbuild": "0.16.1",
+                "ocamlfind": "1.9.8",
+                "parsexp": "v0.17.0",
+                "pgocaml": "4.4.0",
+                "pgocaml_ppx": "4.4.0",
+                "ppx_derivers": "1.2.1",
+                "ppx_deriving": "6.1.3",
+                "ppx_deriving_yojson": "3.10.0",
+                "ppx_optcomp": "v0.17.1",
+                "ppx_sexp_conv": "v0.17.1",
+                "ppxlib": "0.38.0",
+                "ppxlib_jane": "v0.17.4",
+                "re": "1.14.0",
+                "rresult": "0.7.0",
+                "sexplib": "v0.17.0",
+                "sexplib0": "v0.17.0",
+                "sha": "1.15.4",
+                "stdio": "v0.17.0",
+                "stdlib-shims": "0.3.0",
+                "topkg": "1.1.1",
+                "yojson": "3.0.0"
+              },
+              "update_lock": false,
+              "debug": 0,
+              "opam_verbosity": 0,
+              "verbosity": 0
+            }
+          },
           "opam.bootstrap": {
             "repoRuleId": "@@tools_opam+//extensions:opam.bzl%opam_bootstrap",
             "attributes": {
               "opam_version": "2.3.0",
+              "compiler": "@@tools_opam++opam+opam.compiler//:compiler.json",
               "ocaml_version": "5.3.0",
               "packages": {
                 "base": "v0.17.3",
@@ -6369,6 +6431,7 @@
           "explicitRootModuleDirectDevDeps": [
             "opam.ocamlsdk",
             "opam.lock",
+            "opam.compiler",
             "opam.cmdliner",
             "opam.sha",
             "opam.yojson",

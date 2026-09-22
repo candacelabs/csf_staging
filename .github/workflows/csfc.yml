@@ -2,10 +2,10 @@ name: CSF compiler
 
 on:
   pull_request:
-    paths: ['csf/compiler/**', 'csf/examples/proof/**', 'tools/bazel.sh', '.github/workflows/csfc.yml']
+    paths: ['csf/compiler/**', 'csf/examples/proof/**', 'tools/bazel.sh', 'MODULE.bazel', 'MODULE.bazel.lock', 'BUILD.bazel', '.bazelrc', '.bazelversion', '.gitattributes', '.github/actions/ocaml-toolchain/**', '.github/workflows/csfc.yml']
   push:
     branches: [main, candace-export]
-    paths: ['csf/compiler/**', 'csf/examples/proof/**', 'tools/bazel.sh', '.github/workflows/csfc.yml']
+    paths: ['csf/compiler/**', 'csf/examples/proof/**', 'tools/bazel.sh', 'MODULE.bazel', 'MODULE.bazel.lock', 'BUILD.bazel', '.bazelrc', '.bazelversion', '.gitattributes', '.github/actions/ocaml-toolchain/**', '.github/workflows/csfc.yml']
 
 permissions:
   contents: read
@@ -15,13 +15,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  compiler:
+  ocaml-compiler-prepare:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      - name: Prepare the exact OCaml base compiler
+        uses: ./.github/actions/ocaml-toolchain
+        with:
+          mode: compiler
+
+  ocaml-toolchain-prepare:
+    needs: ocaml-compiler-prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Prepare the exact validated OCaml installation
+        uses: ./.github/actions/ocaml-toolchain
+        with:
+          mode: prepare
+
+  compiler:
+    needs: ocaml-toolchain-prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Restore the exact validated OCaml installation
+        uses: ./.github/actions/ocaml-toolchain
       - name: Build and test csfc
         env:
           # The exported repository's MODULE.bazel is at its root. The

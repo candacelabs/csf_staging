@@ -31,6 +31,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	dockerclient "github.com/moby/moby/client"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -180,6 +181,7 @@ func serve(mode string, arguments []string) error {
 	workbenchTraceConfig := flags.String("workbench-trace-config", "", "private generated OTLP configuration for retained Workbench traces")
 	workbenchToken := flags.String("workbench-token-file", "", "optional private Copilot token file")
 	agentMCPKeyFile := flags.String(agentMCPKeyFileFlag, "", "private bearer key for agent MCP sessions")
+	emailConfiguration := flags.String(operatorEmailConfigFlag, "", "private protobuf JSON operator email configuration; requires authenticated agent MCP")
 	localSimulationConfig := flags.String("local-simulation-config", "", "operator-owned local Docker profiles; launch in the shared Go worker")
 	simulationConfig := flags.String("simulation-config", "", "operator-owned protobuf JSON AWS Batch profiles; absent allows local observations only")
 	if err := flags.Parse(arguments); err != nil {
@@ -199,6 +201,17 @@ func serve(mode string, arguments []string) error {
 		}
 	}
 	options := []csf.Option{csf.WithDashboard(csf.NewDashboard(*events))}
+	registry := prometheus.NewRegistry()
+	if *emailConfiguration != "" {
+		if agentMCPAuthenticator == nil {
+			return fmt.Errorf("operator email requires the agent MCP signing key")
+		}
+		mailer, err := configuredOperatorEmail(*emailConfiguration, registry)
+		if err != nil {
+			return err
+		}
+		options = append(options, csf.WithEmail(mailer))
+	}
 	if *workbenchThemeDirectory == "" && *workbenchUI != "" && *work != "" {
 		*workbenchThemeDirectory = filepath.Dir(*work)
 	}
@@ -521,7 +534,7 @@ func serve(mode string, arguments []string) error {
 			return agents, nil
 		}))
 	}
-	inspectionOptions := []csf.InspectionOption{csf.WithInspectionReceipts(*receipts), csf.WithInspectionProjectionWorkers(workers)}
+	inspectionOptions := []csf.InspectionOption{csf.WithInspectionRegistry(registry), csf.WithInspectionReceipts(*receipts), csf.WithInspectionProjectionWorkers(workers)}
 	if simulations != nil {
 		inspectionOptions = append(inspectionOptions, csf.WithInspectionSimulations(simulations))
 	}

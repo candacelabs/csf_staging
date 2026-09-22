@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 go_library(
     name = "cmd_lib",
     srcs = [
+        "email.go",
         "links.go",
         "main.go",
         "workbench_mcp.go",
@@ -13,15 +14,19 @@ go_library(
     deps = [
         "//csf",
         "//pkg/httpserver",
+        "//pkg/privatefile",
         "//pkg/telemetry",
         "//pkg/workcontinuity",
         "//proto/candace/brainspine/v1:brainspine",
+        "//proto/candace/email/v1:email",
+        "//proto/candace/provenance/v1:provenance",
         "//services/copilot-adapter",
         "//services/copilot-adapter/copilotbridge",
         "//services/copilot-adapter/gen/api",
         "//services/copilot-adapter/proto/candace/copilot/v1:copilot",
         "//services/copilot-adapter/storedb",
         "//services/copilot-adapter/workbench",
+        "//services/email",
         "@com_github_aws_aws_sdk_go_v2_config//:config",
         "@com_github_aws_aws_sdk_go_v2_service_batch//:batch",
         "@com_github_aws_aws_sdk_go_v2_service_cloudwatchlogs//:cloudwatchlogs",
@@ -31,6 +36,7 @@ go_library(
         "@com_github_jackc_pgx_v5//pgxpool",
         "@com_github_jackc_pgx_v5//stdlib",
         "@com_github_moby_moby_client//:client",
+        "@com_github_prometheus_client_golang//prometheus",
         "@io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracehttp//:otlptracehttp",
         "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_x_oauth2//:oauth2",
@@ -47,6 +53,7 @@ go_binary(
 go_test(
     name = "cmd_test",
     srcs = [
+        "email_test.go",
         "links_test.go",
         "main_runtime_test.go",
         "workbench_mcp_test.go",
@@ -64,6 +71,7 @@ go_test(
         "@com_github_google_uuid//:uuid",
         "@com_github_onsi_ginkgo_v2//:ginkgo",
         "@com_github_onsi_gomega//:gomega",
+        "@com_github_prometheus_client_golang//prometheus",
         "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_google_protobuf//proto",
     ],

@@ -11,6 +11,7 @@ const (
 	envDataDir  = "WARDEN_DATA_DIR"
 	envLogLevel = "WARDEN_LOG_LEVEL"
 	envPeers    = "WARDEN_PEERS"
+	envLeaderID = "WARDEN_LEADER_ID"
 
 	envHeartbeatInterval  = "WARDEN_HEARTBEAT_INTERVAL"
 	envSuspectAfter       = "WARDEN_SUSPECT_AFTER"

@@ -21,7 +21,8 @@ tar -xzf "$consumer_archive" -C "$consumer_output"
 consumer_module="$consumer_output/$consumer_prefix"
 consumer_example="$consumer_module/examples/csf-consumer"
 consumer_repo="$consumer_output/consumer"
-mkdir "$consumer_repo" "$consumer_output/cache"
+consumer_cache=$(realpath -m "${CANDACE_CONSUMER_GO_CACHE:-$consumer_output/cache}")
+mkdir -p "$consumer_repo" "$consumer_cache/modules" "$consumer_cache/build"
 cp "$consumer_example/main.go" "$consumer_example/consumer_test.go" \
   "$consumer_example/workbench-theme.css" "$consumer_repo/"
 printf '/vendor/\n/csf-consumer\n' > "$consumer_repo/.gitignore"
@@ -31,7 +32,8 @@ printf '/vendor/\n/csf-consumer\n' > "$consumer_repo/.gitignore"
 docker run --rm --user "$(id -u):$(id -g)" \
   -e HOME=/tmp -e GOMODCACHE=/cache/modules -e GOCACHE=/cache/build -e GOMAXPROCS=2 \
   -e CANDACE_CONSUMER_PREFIX="$consumer_prefix" \
-  -v "$consumer_output:/acceptance" -v "$consumer_output/cache:/cache" \
+  -v "$consumer_output:/acceptance" \
+  -v "$consumer_cache/modules:/cache/modules" -v "$consumer_cache/build:/cache/build" \
   -w /acceptance/consumer "$consumer_go_image" bash -euo pipefail -c '
     go mod init example.invalid/csf-consumer
     go mod edit -require=github.com/candacelabs/csf@v0.0.0
@@ -45,13 +47,14 @@ git -C "$consumer_repo" add .gitignore main.go consumer_test.go workbench-theme.
 git -C "$consumer_repo" -c user.name='CSF consumer acceptance' \
   -c user.email='consumer@example.invalid' commit -m 'Exercise CSF from a release archive'
 
-# Only the independent consumer and a compiler cache are mounted. The extracted
-# library is unavailable here; dependency source must come from vendor/.
+# Only the independent consumer and a compiler cache are mounted. Neither the
+# extracted library nor the module download cache is available here; dependency
+# source must come from vendor/. Restored caches never skip this acceptance.
 docker run --rm --network none --user "$(id -u):$(id -g)" \
-  -e HOME=/tmp -e GOMODCACHE=/cache/modules -e GOCACHE=/cache/build -e GOMAXPROCS=2 \
-  -v "$consumer_repo:/consumer" -v "$consumer_output/cache:/cache" \
+  -e HOME=/tmp -e GOMODCACHE=/tmp/gomod -e GOCACHE=/cache/build -e GOMAXPROCS=2 \
+  -v "$consumer_repo:/consumer" -v "$consumer_cache/build:/cache/build" \
   -w /consumer "$consumer_go_image" bash -euo pipefail -c '
-    go test -mod=vendor -race ./...
+    go test -count=1 -mod=vendor -race ./...
     go build -mod=vendor -o csf-consumer .
     ./csf-consumer -listen 127.0.0.1:8089 -theme-dir . &
     consumer_pid=$!

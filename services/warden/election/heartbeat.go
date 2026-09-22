@@ -1,6 +1,10 @@
 package election
 
 import (
+	"context"
+	"net"
+	"net/netip"
+	"strings"
 	"time"
 
 	"github.com/candacelabs/csf/services/warden"
@@ -137,12 +141,24 @@ func (m *Manager) onHeartbeatResult(e heartbeatResultMsg) {
 	}
 }
 
-// onHeartbeat handles an inbound heartbeat. A heartbeat whose term is at least
-// ours is accepted: we adopt any higher term, record the leader, cache its
-// view, reset the election timer, and acknowledge. A stale term is rejected
+// onHeartbeat handles an inbound heartbeat. The serving transport's observed
+// peer address must match the claimed leader's address in the CURRENT voter
+// membership before any state changes. A current voter heartbeat whose term is
+// at least ours is accepted: we adopt any higher term, record the leader, cache
+// its view, reset the election timer, and acknowledge. A stale term is rejected
 // with our current (newer) term so the sender steps down.
-func (m *Manager) onHeartbeat(req warden.HeartbeatRequest) warden.HeartbeatResponse {
+func (m *Manager) onHeartbeat(req warden.HeartbeatRequest, senderAddr string, admittedAddr string) warden.HeartbeatResponse {
 	now := m.clock.Now()
+
+	// Fixed-leader mode rejects an impersonating leader before observing its
+	// term or proposed membership.
+	if m.cfg.LeaderID != "" && req.LeaderID != m.cfg.LeaderID {
+		return warden.HeartbeatResponse{Term: m.currentTerm, OK: false, NodeID: m.self.ID}
+	}
+
+	if !m.authenticatesHeartbeatSender(req.LeaderID, senderAddr, admittedAddr) {
+		return warden.HeartbeatResponse{Term: m.currentTerm, OK: false, NodeID: m.self.ID}
+	}
 
 	if req.Term < m.currentTerm {
 		return warden.HeartbeatResponse{Term: m.currentTerm, OK: false, NodeID: m.self.ID}
@@ -193,4 +209,87 @@ func (m *Manager) onHeartbeat(req warden.HeartbeatRequest) warden.HeartbeatRespo
 
 	m.publish()
 	return warden.HeartbeatResponse{Term: m.currentTerm, OK: acked, NodeID: m.self.ID}
+}
+
+// authenticatesHeartbeatSender binds the payload's claimed leader ID to the
+// current voter membership. Static mode also requires the fixed
+// operator-configured peer registry resolved at construction; legacy discovery
+// mode uses the admitted voter's current membership address. The payload's
+// proposed membership is never an identity source. Ports are intentionally
+// ignored: an outbound RPC uses an ephemeral source port. Co-hosted processes
+// consequently share one transport identity; this is a trusted-host boundary,
+// not mTLS or per-process identity.
+func (m *Manager) authenticatesHeartbeatSender(leaderID warden.NodeID, senderAddr string, admittedAddr string) bool {
+	if !m.isVoter(leaderID) {
+		return false
+	}
+	senderHost, ok := transportHost(senderAddr)
+	if !ok {
+		return false
+	}
+	if !m.discoveryMode {
+		_, ok = m.trustedPeerHosts[leaderID][senderHost]
+		return ok
+	}
+
+	// Resolution used a membership snapshot outside the loop. Require that the
+	// authenticated address still belongs to this voter before changing state.
+	for _, voter := range m.membership.Voters {
+		if voter.ID == leaderID {
+			return admittedAddr != "" && voter.Addr == admittedAddr
+		}
+	}
+	return false
+}
+
+// resolveHeartbeatSender returns the admitted address whose resolved host
+// matches the serving transport. DNS never blocks election or shutdown in the
+// owning loop, and the request's proposed membership is not consulted.
+func (m *Manager) resolveHeartbeatSender(ctx context.Context, leaderID warden.NodeID, senderAddr string) string {
+	senderHost, ok := transportHost(senderAddr)
+	if !ok {
+		return ""
+	}
+	reply := make(chan warden.ClusterView, 1)
+	select {
+	case m.events <- viewMsg{reply: reply}:
+	case <-ctx.Done():
+		return ""
+	case <-m.done:
+		return ""
+	}
+	view := waitForReply(ctx, m.done, reply, warden.ClusterView{})
+	for _, voter := range view.Membership.Voters {
+		if voter.ID != leaderID {
+			continue
+		}
+		hosts, err := resolveTrustedPeerHosts(ctx, []warden.Node{voter}, m.cfg.RPCTimeout)
+		if err == nil {
+			if _, matches := hosts[leaderID][senderHost]; matches {
+				return voter.Addr
+			}
+		}
+		return ""
+	}
+	return ""
+}
+
+func transportHost(address string) (string, bool) {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return "", false
+	}
+
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		host = address
+	}
+	host = strings.TrimSuffix(strings.TrimSpace(host), ".")
+	if host == "" {
+		return "", false
+	}
+	if parsed, err := netip.ParseAddr(host); err == nil {
+		return parsed.Unmap().String(), true
+	}
+	return strings.ToLower(host), true
 }

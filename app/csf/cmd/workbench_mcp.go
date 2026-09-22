@@ -66,7 +66,7 @@ func workbenchMCPServers(origin string, config *copilotv1.TraceExportConfig) (ma
 // Human-operated sessions keep the ordinary /mcp catalog. Agent-owned sessions
 // replace that catalog entry with /mcp/agent and the headers bound to the
 // stored agent and session IDs. The bridge remains transport-generic: this
-// application owns the choice of CSF endpoint and its bearer-key policy.
+// application owns the choice of CSF endpoint and its session-credential policy.
 func workbenchMCPServerResolver(origin string, config *copilotv1.TraceExportConfig, authenticator *csf.AgentMCPAuthenticator) copilotbridge.MCPServerResolver {
 	return func(_ context.Context, spec copilotadapter.BridgeSessionSpec) (map[string]copilot.MCPServerConfig, error) {
 		servers, err := workbenchMCPServers(origin, config)

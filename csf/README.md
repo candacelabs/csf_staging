@@ -357,8 +357,8 @@ OCaml build and executable under `bin/`. Its [Lean verifier](compiler/verificati
 currently provides a compiling stub that returns `notImplemented`; it does not
 certify compiler output.
 
-The [architecture model](docs/architecture.csf) generates the diagrams and
-[human dictionary](docs/ontology_cgen.md), using the declared [grammar](docs/grammar.ebnf).
+The [architecture model](compiler/language/architecture.csf) generates the diagrams and
+[human dictionary](docs/generated/ontology_cgen.md), using the declared [grammar](docs/generated/grammar.ebnf).
 The documentation compiler checks identifiers, references, and the graph;
 separate architecture checks inspect selected Go ownership/process boundaries.
 These establish source constraints, not runtime timing or physical safety.

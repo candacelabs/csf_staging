@@ -46,6 +46,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/candacelabs/csf/services/warden"
+	"github.com/candacelabs/csf/services/warden/internal/transportidentity"
 )
 
 // eventBuffer sizes the loop inbound channel. RPC volume is tiny (a handful of
@@ -97,6 +98,11 @@ type Manager struct {
 	store           warden.IStore
 	clock           warden.IClock
 	log             *zerolog.Logger
+	// trustedPeerHosts is resolved once from cfg.Peers at construction. It is
+	// the fixed operator-configured node-ID -> network-host authority used for
+	// inbound heartbeat authentication; heartbeat payload membership never
+	// contributes identities to this registry.
+	trustedPeerHosts map[warden.NodeID]map[string]struct{}
 
 	// baseCtx is the Run context; outbound RPC contexts derive from it.
 	baseCtx context.Context
@@ -153,6 +159,7 @@ type Manager struct {
 	cachedView        *warden.ClusterView // follower: last leader view received
 	cachedViewAt      time.Time
 	lastLeaderContact time.Time // follower: last accepted heartbeat receipt
+	startedAt         time.Time // Run startup; fixed followers age an unheard leader from here
 
 	electionTimer   warden.Timer
 	heartbeatTicker warden.Ticker
@@ -180,8 +187,12 @@ type voteMsg struct {
 }
 
 type heartbeatMsg struct {
-	req   warden.HeartbeatRequest
-	reply chan warden.HeartbeatResponse
+	req        warden.HeartbeatRequest
+	senderAddr string
+	// admittedAddr is resolved outside the loop, then compared with the
+	// current membership again before the heartbeat may mutate state.
+	admittedAddr string
+	reply        chan warden.HeartbeatResponse
 }
 
 type voteResultMsg struct {
@@ -251,6 +262,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	}
 
 	now := m.clock.Now()
+	m.startedAt = now
 	timeout := m.randTimeout()
 	m.electionDeadline = now.Add(timeout)
 	m.electionTimer = m.clock.NewTimer(timeout)
@@ -318,7 +330,7 @@ func (m *Manager) handleEvent(ev any) {
 		e.reply <- m.onVote(e.req)
 		m.activity.Add(1)
 	case heartbeatMsg:
-		e.reply <- m.onHeartbeat(e.req)
+		e.reply <- m.onHeartbeat(e.req, e.senderAddr, e.admittedAddr)
 		m.activity.Add(1)
 	case voteResultMsg:
 		m.onVoteResult(e)
@@ -406,9 +418,14 @@ func (m *Manager) HandleVote(ctx context.Context, req warden.VoteRequest) warden
 // down before the loop replies.
 func (m *Manager) HandleHeartbeat(ctx context.Context, req warden.HeartbeatRequest) warden.HeartbeatResponse {
 	fallback := warden.HeartbeatResponse{OK: false, NodeID: m.self.ID}
+	senderAddr, _ := transportidentity.PeerAddress(ctx)
+	admittedAddr := ""
+	if m.discoveryMode {
+		admittedAddr = m.resolveHeartbeatSender(ctx, req.LeaderID, senderAddr)
+	}
 	reply := make(chan warden.HeartbeatResponse, 1)
 	select {
-	case m.events <- heartbeatMsg{req: req, reply: reply}:
+	case m.events <- heartbeatMsg{req: req, senderAddr: senderAddr, admittedAddr: admittedAddr, reply: reply}:
 	case <-ctx.Done():
 		return fallback
 	case <-m.done:

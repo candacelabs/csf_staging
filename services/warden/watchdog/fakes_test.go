@@ -272,3 +272,15 @@ func followerView(term warden.Term, leader warden.NodeID, peers ...warden.PeerVi
 		Peers:         peers,
 	}
 }
+
+func configuredLeaderFollowerView(term warden.Term, leader warden.NodeID, peers ...warden.PeerView) warden.ClusterView {
+	return warden.ClusterView{
+		Self:          selfID,
+		Role:          warden.RoleFollower,
+		Term:          term,
+		LeaderID:      leader,
+		Source:        selfID,
+		Authoritative: false,
+		Peers:         peers,
+	}
+}

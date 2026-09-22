@@ -23,6 +23,10 @@ func (m *Manager) onElectionTimeout() {
 		m.resetElectionTimer(m.randTimeout())
 		return
 	}
+	if m.cfg.LeaderID != "" && m.self.ID != m.cfg.LeaderID {
+		m.resetElectionTimer(m.randTimeout())
+		return
+	}
 	if now.Before(m.electionDeadline) {
 		m.resetElectionTimer(m.electionDeadline.Sub(now))
 		return
@@ -34,6 +38,10 @@ func (m *Manager) onElectionTimeout() {
 // decision BEFORE proceeding (so a crash can never let the node vote twice in
 // one term), and fans out RequestVote to every other peer in parallel.
 func (m *Manager) startElection() {
+	if m.cfg.LeaderID != "" && m.self.ID != m.cfg.LeaderID {
+		m.resetElectionTimer(m.randTimeout())
+		return
+	}
 	// Defensive: an observer (self ∉ voters) must never stand for election.
 	if m.isObserver() {
 		m.resetElectionTimer(m.randTimeout())
@@ -97,6 +105,9 @@ func (m *Manager) startElection() {
 // longer a candidate) are ignored; a higher term forces a step-down; a
 // majority promotes to leader.
 func (m *Manager) onVoteResult(e voteResultMsg) {
+	if m.cfg.LeaderID != "" && m.self.ID != m.cfg.LeaderID {
+		return
+	}
 	if m.role != warden.RoleCandidate || e.term != m.currentTerm {
 		return
 	}
@@ -125,6 +136,12 @@ func (m *Manager) onVoteResult(e voteResultMsg) {
 // becomeLeader transitions to leader and immediately heartbeats. The term and
 // vote were already persisted at candidacy, so no additional Save is needed.
 func (m *Manager) becomeLeader() {
+	if m.cfg.LeaderID != "" && m.self.ID != m.cfg.LeaderID {
+		m.role = warden.RoleFollower
+		m.leaderID = m.cfg.LeaderID
+		m.resetElectionTimer(m.randTimeout())
+		return
+	}
 	now := m.clock.Now()
 	m.role = warden.RoleLeader
 	m.leaderID = m.self.ID
@@ -165,7 +182,7 @@ func (m *Manager) stepDown(newTerm warden.Term) {
 	m.currentTerm = newTerm
 	m.votedFor = ""
 	m.role = warden.RoleFollower
-	m.leaderID = ""
+	m.leaderID = m.cfg.LeaderID
 
 	timeout := m.randTimeout()
 	m.electionDeadline = now.Add(timeout)
@@ -184,6 +201,12 @@ func (m *Manager) stepDown(newTerm warden.Term) {
 // granting, so the promise survives a restart.
 func (m *Manager) onVote(req warden.VoteRequest) warden.VoteResponse {
 	now := m.clock.Now()
+
+	// Fixed-leader mode rejects an impersonating candidate before observing its
+	// term, so an arbitrary high-term request cannot advance durable state.
+	if m.cfg.LeaderID != "" && req.CandidateID != m.cfg.LeaderID {
+		return warden.VoteResponse{Term: m.currentTerm, Granted: false, VoterID: m.self.ID}
+	}
 
 	// A pure observer (self ∉ voters) never grants a vote. It plays no part in
 	// quorum and must not influence any election.
@@ -224,7 +247,7 @@ func (m *Manager) onVote(req warden.VoteRequest) warden.VoteResponse {
 		m.currentTerm = termToUse
 		m.votedFor = req.CandidateID
 		m.role = warden.RoleFollower
-		m.leaderID = ""
+		m.leaderID = m.cfg.LeaderID
 
 		timeout := m.randTimeout()
 		m.electionDeadline = now.Add(timeout)
@@ -257,7 +280,7 @@ func (m *Manager) onVote(req warden.VoteRequest) warden.VoteResponse {
 		m.currentTerm = req.Term
 		m.votedFor = ""
 		m.role = warden.RoleFollower
-		m.leaderID = ""
+		m.leaderID = m.cfg.LeaderID
 
 		timeout := m.randTimeout()
 		m.electionDeadline = now.Add(timeout)

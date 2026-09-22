@@ -22,18 +22,18 @@ change to this tree must satisfy before it can ever reach here:
 
 | here | monorepo |
 |---|---|
-| `ci.yml` → `go`, `rust` | `.github/workflows/candace-bazel-checks.yml` |
+| `ci.yml` → Bazel inventory, runtime partitions, compiler and metadata | `.github/workflows/candace-bazel-checks.yml` |
 | `csfc.yml` → compiler and Lean stub | `.github/workflows/brain-spine-composition.yml` → `compiler-package` |
 | `ci.yml` → `identifiers` | `.github/workflows/component-export-checks.yml` |
 | `ci.yml` → `candaceos` | `.github/workflows/candaceos-acceptance.yml` |
-| `ci.yml` → `go_toolchain` | **no single counterpart.** The monorepo splits the same packages across `candace-go-checks.yml`, `gotth-live-checks.yml` and `pgmem-checks.yml`, and none of them runs `go test ./...` over the whole module. `//app/warden/e2e:e2e_test` is `manual` in Bazel and is reached by this job and nothing else, in either repository |
+| `ci.yml` → Go preparation, build, vet/API and four test shards | **no single counterpart.** The monorepo splits checks across `candace-go-checks.yml`, `gotth-live-checks.yml`, `pgmem-checks.yml` and `go-coverage.yml`. The destination shards partition the complete `go list ./...` inventory, including packages whose Bazel tests are tagged `manual`. |
 
 ## What they are for
 
-The destination is generated and read-only: the monorepo is canonical, and an
-edit made there is overwritten by the next export. So these jobs are not a
-contribution gate. They answer a different question — *is this snapshot
-coherent on its own?* A snapshot can be green in the monorepo and still be
+The destination is generated: the monorepo is canonical, and a hand-written
+destination commit blocks the exporter on divergence. These jobs gate the
+generated snapshot PR before it is merged into `main`. They check whether the
+snapshot is coherent on its own. A snapshot can be green in the monorepo and still be
 broken here, because here it is a repository rather than a subdirectory: the
 module root moves, `candaceos/` sits at the top level, and consumers take this
 tree as a Bazel module. Every job here asks that question and nothing else:
@@ -63,8 +63,24 @@ this repository publishes a website any more.
 - **Bazel comes from the pinned container**, through `tools/bazel.sh`, rather
   than from a runner-provided Bazel or a `setup-` action. It is the same
   command a developer runs, and `.bazelversion` and `MODULE.bazel` remain the
-  only version authority. Bazel's caches are deliberately not carried between
-  runs; the reasoning is in `ci.yml`.
+  only version authority. Runtime jobs share immutable repository downloads
+  and content-addressed build results; each job resolves its own module graph.
+  Separate five-minute preparations compile Go standard libraries and generator
+  tools, then Rust build helpers, network dependencies, storage and generator
+  dependencies, and the remaining Xet libraries.
+  Consumers require the exact successful preparation cache before proceeding.
+  The longer chaos suite has its own Go partition so its full execution fits
+  alongside compilation and transfer within the same five-minute job limit.
+  Each partition builds its complete target inventory and runs non-manual
+  tests in one invocation. Manual tests still build; their documented Go/Cargo
+  owners provide the prerequisites needed to execute them.
+  Compiler jobs restore a separately prepared OCaml installation whose exact
+  package and library inventory is revalidated by Bazel. Neither a cache hit
+  nor a preparation job substitutes for a consuming check.
+- **Optional cache uploads have a separate budget.** Completed checks remain
+  authoritative when an optional build-cache upload is skipped or times out.
+  Required preparation caches still fail their producer or consumer when
+  unavailable; the optional-save action does not apply to them.
 
 ## Operator prerequisites
 

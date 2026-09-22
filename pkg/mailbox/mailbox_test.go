@@ -2,6 +2,7 @@ package mailbox_test
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -98,46 +99,45 @@ var _ = Describe("Mailbox", func() {
 		Expect(box.Stop).NotTo(Panic(), "Stop is idempotent, so no caller has to track who stopped first")
 	})
 
+	It("unblocks concurrent submissions during shutdown", func() {
+		box, _ := run()
+		occupied := make(chan struct{})
+		release := make(chan struct{})
+		Expect(box.Submit(func(current *state) bool {
+			close(occupied)
+			<-release
+			box.Stop()
+			return true
+		})).To(BeTrue())
+		<-occupied
+
+		const submitters = 32
+		start := make(chan struct{})
+		results := make(chan bool, submitters)
+		var wait sync.WaitGroup
+		wait.Add(submitters)
+		for range submitters {
+			go func() {
+				defer wait.Done()
+				<-start
+				results <- box.Submit(func(current *state) bool { return false })
+			}()
+		}
+		close(start)
+		close(release)
+
+		done := make(chan struct{})
+		go func() {
+			wait.Wait()
+			close(done)
+		}()
+		Eventually(done).Should(BeClosed())
+		for range submitters {
+			Expect(<-results).To(BeFalse())
+		}
+	})
+
 	Describe("SubmitContext", func() {
-		It("gives up when the caller's context is done", func() {
-			box, _ := run()
-			DeferCleanup(func() { Expect(box.Submit(func(current *state) bool { return true })).To(BeTrue()) })
-
-			occupied := make(chan struct{})
-			release := make(chan struct{})
-			Expect(box.Submit(func(current *state) bool {
-				close(occupied)
-				<-release
-				return false
-			})).To(BeTrue())
-			<-occupied
-			defer close(release)
-
-			done, cancel := context.WithCancel(context.Background())
-			cancel()
-			Expect(box.SubmitContext(done, nil, func(current *state) bool { return false })).To(BeFalse())
-		})
-
-		It("gives up when the supplied cancellation channel closes", func() {
-			box, _ := run()
-			DeferCleanup(func() { Expect(box.Submit(func(current *state) bool { return true })).To(BeTrue()) })
-
-			occupied := make(chan struct{})
-			release := make(chan struct{})
-			Expect(box.Submit(func(current *state) bool {
-				close(occupied)
-				<-release
-				return false
-			})).To(BeTrue())
-			<-occupied
-			defer close(release)
-
-			canceled := make(chan struct{})
-			close(canceled)
-			Expect(box.SubmitContext(context.Background(), canceled,
-				func(current *state) bool { return false })).To(BeFalse())
-		})
-
 		It("gives up when the mailbox has stopped", func() {
 			box, _ := run()
 

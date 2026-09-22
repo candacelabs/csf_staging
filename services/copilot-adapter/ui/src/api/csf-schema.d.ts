@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/email/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email the configured operator. Requires an authenticated agent session. The host automatically attaches Spine provenance and retains a delivery receipt; SMTP acceptance does not prove inbox delivery. Do not blindly retry an unknown outcome. */
+        post: operations["Research_SendEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/agents/configuration/get": {
         parameters: {
             query?: never;
@@ -765,6 +782,76 @@ export interface components {
             /** @description Host filesystem path selected by composition, never supplied by an agent call. */
             filePath?: string;
         };
+        /** @enum {string} */
+        "candace.email.v1.DeliveryOutcome": "DELIVERY_OUTCOME_UNSPECIFIED" | "DELIVERY_OUTCOME_ACCEPTED" | "DELIVERY_OUTCOME_FAILED" | "DELIVERY_OUTCOME_UNKNOWN";
+        /** @description The host owns sender, operator recipients, provenance and transport settings.
+         *     An agent supplies message content, not a forged footer or runtime identity. */
+        "candace.email.v1.EmailMessage": {
+            subject?: string;
+            text?: string;
+        };
+        "candace.email.v1.EmailReceipt": {
+            /** Format: date-time */
+            completedAt?: string;
+            /** @description Bounded classification only; never raw SMTP errors, recipients or message text. */
+            errorCode?: string;
+            messageSha256?: string;
+            outcome?: components["schemas"]["candace.email.v1.DeliveryOutcome"];
+            provenance?: components["schemas"]["candace.provenance.v1.ReceiptMetadata"];
+        };
+        "candace.email.v1.SendEmailResponse": {
+            receipt?: components["schemas"]["candace.email.v1.EmailReceipt"];
+        };
+        "candace.provenance.v1.ContainerObservation": {
+            image?: string;
+            links?: components["schemas"]["candace.provenance.v1.EvidenceLink"][];
+            name?: string;
+            node?: components["schemas"]["candace.provenance.v1.NodeIdentity"];
+            /** Format: date-time */
+            observedAt?: string;
+            state?: components["schemas"]["candace.provenance.v1.ContainerState"];
+        };
+        /** @enum {string} */
+        "candace.provenance.v1.ContainerState": "CONTAINER_STATE_UNSPECIFIED" | "CONTAINER_STATE_RUNNING" | "CONTAINER_STATE_STOPPED" | "CONTAINER_STATE_UNKNOWN";
+        "candace.provenance.v1.EvidenceLink": {
+            kind?: components["schemas"]["candace.provenance.v1.EvidenceLinkKind"];
+            label?: string;
+            /** @description The renderer additionally permits only HTTP(S), with no userinfo or secrets. */
+            url?: string;
+        };
+        /** @enum {string} */
+        "candace.provenance.v1.EvidenceLinkKind": "EVIDENCE_LINK_KIND_UNSPECIFIED" | "EVIDENCE_LINK_KIND_LOGS" | "EVIDENCE_LINK_KIND_TRACE" | "EVIDENCE_LINK_KIND_GRAFANA" | "EVIDENCE_LINK_KIND_WORKBENCH" | "EVIDENCE_LINK_KIND_CSF";
+        "candace.provenance.v1.NodeIdentity": {
+            address?: string;
+            hostname?: string;
+            nodeId?: string;
+        };
+        /** @description A transport signature is not implied: this record identifies observations,
+         *     not cryptographic attestation. Unknown values stay absent, never inferred. */
+        "candace.provenance.v1.ReceiptMetadata": {
+            containers?: components["schemas"]["candace.provenance.v1.ContainerObservation"][];
+            csfVersion?: string;
+            links?: components["schemas"]["candace.provenance.v1.EvidenceLink"][];
+            receiptId?: string;
+            /** Format: date-time */
+            recordedAt?: string;
+            reportingNode?: components["schemas"]["candace.provenance.v1.NodeIdentity"];
+            /** Format: int64 */
+            schemaVersion?: number;
+            /** @description Only sessions associated with this operation, supplied by its trusted host.
+             *     Do not collect unrelated conversations, prompts, credentials or tokens. */
+            sessions?: components["schemas"]["candace.provenance.v1.SessionReference"][];
+            sourceRevision?: string;
+            /** @description Explicit collection gaps, e.g. "container observer unavailable". */
+            unavailable?: string[];
+        };
+        "candace.provenance.v1.SessionReference": {
+            agentId?: string;
+            /** @description Stable provider identifier, e.g. copilot or chatgpt, not a model guess. */
+            provider?: string;
+            sessionId?: string;
+            url?: string;
+        };
         /** @description The Status type defines a logical error model suitable for different programming environments. */
         "google.rpc.Status": {
             /**
@@ -790,6 +877,41 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    Research_SendEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    message?: components["schemas"]["candace.email.v1.EmailMessage"];
+                };
+            };
+        };
+        responses: {
+            /** @description A successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["candace.email.v1.SendEmailResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["google.rpc.Status"];
+                };
+            };
+        };
+    };
     Research_GetOwnAgentConfiguration: {
         parameters: {
             query?: never;

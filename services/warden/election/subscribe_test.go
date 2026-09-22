@@ -40,7 +40,7 @@ var _ = Describe("view subscription", func() {
 
 		// A state change (accepting a leader via heartbeat) must publish a
 		// snapshot reflecting the new leader.
-		s.m.HandleHeartbeat(ctx, warden.HeartbeatRequest{Term: 2, LeaderID: "b"})
+		s.m.HandleHeartbeat(heartbeatContext(ctx, "b"), warden.HeartbeatRequest{Term: 2, LeaderID: "b"})
 		got = drainViews(ch)
 		Expect(got).NotTo(BeEmpty(), "expected a snapshot after a state change")
 		last := got[len(got)-1]
@@ -75,7 +75,7 @@ var _ = Describe("view subscription", func() {
 		// these synchronous handler calls would deadlock and the test would hang.
 		for i := 0; i < 100; i++ {
 			term := warden.Term(i + 1)
-			s.m.HandleHeartbeat(ctx, warden.HeartbeatRequest{Term: term, LeaderID: "b"})
+			s.m.HandleHeartbeat(heartbeatContext(ctx, "b"), warden.HeartbeatRequest{Term: term, LeaderID: "b"})
 		}
 
 		// The subscriber still holds (at most) its buffered snapshot; the point

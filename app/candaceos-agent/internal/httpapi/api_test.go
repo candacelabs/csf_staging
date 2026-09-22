@@ -149,7 +149,7 @@ var _ = Describe("API", func() {
 					App:            "notes",
 					Project:        "notes",
 					Path:           "notes",
-					DesiredState:   candaceosv1.DesiredState_DESIRED_STATE_STOPPED,
+					DesiredState:   candaceosv1.DesiredState_DESIRED_STATE_RUNNING,
 					SourceRevision: sourceRevision,
 					ContentSha256:  sourceDigest,
 				},
@@ -157,6 +157,30 @@ var _ = Describe("API", func() {
 		}
 		Expect(put(handler, request(2)).Code).To(Equal(http.StatusOK))
 		Expect(put(handler, request(1)).Code).To(Equal(http.StatusConflict))
+	})
+
+	It("rejects STOPPED through the API without persisting an assignment or commands", func() {
+		response := put(handler, &candaceosv1.ReconcileRequest{
+			Fence: &candaceosv1.Fence{Term: 1, LeaderId: "warden-a"},
+			Assignment: &candaceosv1.Assignment{
+				App:            "notes",
+				Project:        "notes",
+				Path:           "notes",
+				DesiredState:   candaceosv1.DesiredState_DESIRED_STATE_STOPPED,
+				SourceRevision: sourceRevision,
+				ContentSha256:  sourceDigest,
+			},
+		})
+
+		Expect(response.Code).To(Equal(http.StatusUnprocessableEntity))
+		Expect(response.Body.String()).To(ContainSubstring("STOPPED assignments are unsupported"))
+		Expect(response.Body.String()).NotTo(ContainSubstring("docker"))
+		statusResponse := serve(handler, httptest.NewRequest(http.MethodGet, "/v1/status", nil), true)
+		var status candaceosv1.AgentStatus
+		Expect(protojson.Unmarshal(statusResponse.Body.Bytes(), &status)).To(Succeed())
+		Expect(status.Fence).NotTo(BeNil(), "fencing remains durable")
+		Expect(status.Assignment).To(BeNil(), "unsupported work must not become the reconciled assignment")
+		Expect(status.Commands).To(BeEmpty())
 	})
 
 	DescribeTable("rejects invalid protobuf JSON requests",

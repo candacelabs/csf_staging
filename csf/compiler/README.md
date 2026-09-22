@@ -5,6 +5,8 @@ boundaries. The [architecture compiler](architecture/README.md) owns this
 implementation; the [documentation compiler](language/README.md) owns the
 shared vocabulary and diagrams. Root `tools/` copies are generated compatibility
 mirrors, maintained by `tools/sync-csf-compiler-compat.sh` in the monorepo.
+The [API projection compiler](api_codegen/README.md) generates typed Go clients,
+HTTP/MCP registration and CLI catalogs from the protobuf/OpenAPI contracts.
 
 The public module supplies pinned OCaml dependencies as development dependencies,
 so Go consumers do not resolve the compiler toolchain. From its root:

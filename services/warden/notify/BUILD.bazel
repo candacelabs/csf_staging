@@ -12,7 +12,12 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/core",
+        "//proto/candace/email/v1:email",
+        "//proto/candace/provenance/v1:provenance",
+        "//services/email",
         "//services/warden",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@org_golang_google_protobuf//proto",
     ],
 )
 
@@ -21,14 +26,20 @@ go_test(
     srcs = [
         "file_test.go",
         "log_test.go",
+        "mock_email_generate_test.go",
+        "mock_email_test.go",
         "notify_contract_test.go",
         "notify_test.go",
         "smtp_test.go",
     ],
     embed = [":notify"],
     deps = [
+        "//proto/candace/email/v1:email",
+        "//proto/candace/provenance/v1:provenance",
+        "//services/email",
         "//services/warden",
         "@com_github_onsi_ginkgo_v2//:ginkgo",
         "@com_github_onsi_gomega//:gomega",
+        "@org_uber_go_mock//gomock",
     ],
 )

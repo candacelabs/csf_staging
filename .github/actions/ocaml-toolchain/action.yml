@@ -1,0 +1,91 @@
+name: Reuse the validated OCaml toolchain
+description: Prepare or restore an exact locked installation at a stable container path; callers still run their complete native checks.
+
+inputs:
+  mode:
+    description: compiler prepares the exact OCaml base; prepare completes its locked graph; restore requires the final validated installation.
+    default: restore
+
+outputs:
+  cache-hit:
+    description: Whether the exact installation was already cached.
+    value: ${{ steps.restore.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Identify the exact toolchain and stable installation
+      id: key
+      shell: bash
+      env:
+        ACTION_ROOT: ${{ github.action_path }}
+        MODE: ${{ inputs.mode }}
+      run: |
+        set -Eeuo pipefail
+        case "$MODE" in compiler|prepare|restore) ;; *) printf 'Unknown toolchain cache mode: %s\n' "$MODE" >&2; exit 2 ;; esac
+        module_root=$(cd -- "$ACTION_ROOT/../../.." && pwd -P)
+        key=$(bash "$ACTION_ROOT/key.sh")
+        printf 'value=%s\n' "$key" >> "$GITHUB_OUTPUT"
+        printf 'module-root=%s\n' "$module_root" >> "$GITHUB_OUTPUT"
+        printf 'CANDACE_OCAML_TOOLCHAIN_CACHE=%s/.git/csf-ocaml-toolchain\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+
+    - name: Restore the exact validated installation
+      id: restore
+      uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      with:
+        path: .git/csf-ocaml-toolchain/
+        key: csf-ocaml-toolchain-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.key.outputs.value }}
+
+    - name: Require the prepared installation in check jobs
+      if: inputs.mode == 'restore' && steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        printf 'The exact OCaml installation is missing; the preparation job must finish successfully first.\n' >&2
+        exit 1
+
+    - name: Restore the separately validated compiler base
+      id: compiler
+      if: inputs.mode != 'restore' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      with:
+        path: .git/csf-ocaml-toolchain/
+        key: csf-ocaml-compiler-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.key.outputs.value }}
+
+    - name: Install and validate the exact base compiler
+      if: inputs.mode == 'compiler' && steps.restore.outputs.cache-hit != 'true' && steps.compiler.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        CANDACE_BAZEL_WORKSPACE: ${{ steps.key.outputs.module-root }}
+      run: |
+        set -Eeuo pipefail
+        bash "$CANDACE_BAZEL_WORKSPACE/tools/bazel.sh" build @opam.compiler//:compiler.json --lockfile_mode=error
+
+    - name: Save the intermediate compiler preparation
+      if: inputs.mode == 'compiler' && steps.restore.outputs.cache-hit != 'true' && steps.compiler.outputs.cache-hit != 'true'
+      uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      with:
+        path: .git/csf-ocaml-toolchain/
+        key: ${{ steps.compiler.outputs.cache-primary-key }}
+
+    - name: Require the compiler base before preparing the complete graph
+      if: inputs.mode == 'prepare' && steps.restore.outputs.cache-hit != 'true' && steps.compiler.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        printf 'The exact OCaml base is missing; compiler preparation must finish successfully first.\n' >&2
+        exit 1
+
+    - name: Install and validate the complete locked package and library graph
+      if: inputs.mode == 'prepare' && steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        CANDACE_BAZEL_WORKSPACE: ${{ steps.key.outputs.module-root }}
+      run: |
+        set -Eeuo pipefail
+        bash "$CANDACE_BAZEL_WORKSPACE/tools/bazel.sh" build @opam.lock//:opam.lock.json --lockfile_mode=error
+
+    - name: Save only the successfully validated installation
+      if: inputs.mode == 'prepare' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      with:
+        path: .git/csf-ocaml-toolchain/
+        key: ${{ steps.restore.outputs.cache-primary-key }}

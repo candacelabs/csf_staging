@@ -16,6 +16,7 @@ go_library(
     deps = [
         "//pkg/core",
         "//services/warden",
+        "//services/warden/internal/transportidentity",
         "@com_github_rs_zerolog//:zerolog",
     ],
 )
@@ -40,6 +41,7 @@ go_test(
     deps = [
         "//services/warden",
         "//services/warden/internal/mocks",
+        "//services/warden/internal/transportidentity",
         "//services/warden/notify",
         "//services/warden/store",
         "//services/warden/testclock",

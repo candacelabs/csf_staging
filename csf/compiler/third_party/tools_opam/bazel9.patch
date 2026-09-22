@@ -86,7 +86,7 @@ diff --git a/extensions/opam/opam_toolchain_xdg.bzl b/extensions/opam/opam_toolc
      if verbosity > 0:
          print("\n  Configuring XDG toolchain in %s" % XDG_OPAM_CTX)
  
-@@ -272,20 +272,15 @@
+@@ -272,20 +272,16 @@
  
      SDKBIN = switch_bin
  
@@ -108,11 +108,12 @@ diff --git a/extensions/opam/opam_toolchain_xdg.bzl b/extensions/opam/opam_toolc
 +    # silently accepts a different installed version and drops the MODULE pins.
 +    atoms = [pkg + "." + package_versions[pkg]
 +             if package_versions.get(pkg) else pkg for pkg in package_versions]
-+    cmd = [opambin, "install", "--root", OPAMROOT,
-+           "--switch", switch_id, "--yes"] + atoms
-+    res = mctx.execute(cmd, quiet = (opam_verbosity < 1))
-+    if res.return_code != 0:
-+        fail("opam dependency resolution failed: " + res.stderr)
++    if atoms:
++        cmd = [opambin, "install", "--root", OPAMROOT,
++               "--switch", switch_id, "--yes"] + atoms
++        res = mctx.execute(cmd, quiet = (opam_verbosity < 1))
++        if res.return_code != 0:
++            fail("opam dependency resolution failed: " + res.stderr)
  
      # get all installed pkgs
      cmd = [opambin,
@@ -174,14 +175,60 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
      if verbosity > 1:
          cmd.append("--subcommands=pretty_print")
  
-@@ -128,6 +145,99 @@
+@@ -128,6 +145,144 @@
  
      return config_pkg_tool
  
++def _installed_versions(rctx, opam, root, switch):
++    listed = rctx.execute([str(opam), "list", "--root", str(root),
++                           "--switch", switch, "--installed",
++                           "--columns=name,version", "--short"])
++    if listed.return_code != 0:
++        fail("Cannot read resolved opam dependencies: " + listed.stderr)
++    resolved = {}
++    for line in listed.stdout.splitlines():
++        fields = [field for field in line.replace("\t", " ").split(" ") if field]
++        if len(fields) == 2:
++            resolved[fields[0]] = fields[1]
++    return resolved
++
++# The compiler-only preparation target never claims a complete dependency graph.
++def _opam_compiler_impl(rctx):
++    context_root = rctx.getenv("CSF_OCAML_TOOLCHAIN_ROOT") or str(rctx.path("opam"))
++    (opam, root, _sdklib, switch, _version, _libraries) = config_xdg_toolchain(
++        rctx, rctx.attr.opam_version, rctx.attr.ocaml_version, [], {},
++        rctx.attr.debug, rctx.attr.opam_verbosity, rctx.attr.verbosity,
++        context_root = context_root,
++    )
++    resolved = _installed_versions(rctx, opam, root, switch)
++    if not rctx.attr.update_lock:
++        for package, version in resolved.items():
++            if rctx.attr.locked_versions.get(package) != version:
++                fail("Installed compiler preparation package differs from lock: " + package)
++    checked = rctx.execute([str(root) + "/" + switch + "/bin/ocamlc", "-version"])
++    if checked.return_code != 0 or checked.stdout.strip() != rctx.attr.ocaml_version:
++        fail("Prepared OCaml compiler differs from the requested version")
++    rctx.file("compiler.json", json.encode({"context_root": context_root, "packages": resolved}))
++    rctx.file("BUILD.bazel", 'exports_files(["compiler.json"])\n')
++
++opam_compiler = repository_rule(
++    implementation = _opam_compiler_impl,
++    attrs = {
++        "opam_version": attr.string(mandatory = True),
++        "ocaml_version": attr.string(mandatory = True),
++        "locked_versions": attr.string_dict(mandatory = True),
++        "update_lock": attr.bool(),
++        "debug": attr.int(),
++        "opam_verbosity": attr.int(),
++        "verbosity": attr.int(),
++    },
++)
++
 +# A repository dependency owns executable/toolchain installation. Extension
 +# lockfile replay only declares this repository; fetching any package still
 +# materializes its complete bootstrap dependency first.
 +def _opam_bootstrap_impl(rctx):
++    compiler = json.decode(rctx.read(rctx.attr.compiler))
 +    config_tool = _build_config_tool(rctx, "xdg", rctx.attr.debug, rctx.attr.verbosity)
 +    copied = rctx.execute(["cp", str(config_tool), "config-tool"])
 +    if copied.return_code != 0:
@@ -193,18 +240,9 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
 +        rctx, rctx.attr.opam_version, rctx.attr.ocaml_version,
 +        rctx.attr.packages.keys(), rctx.attr.packages,
 +        rctx.attr.debug, rctx.attr.opam_verbosity, rctx.attr.verbosity,
-+        context_root = str(rctx.path("opam")),
++        context_root = compiler["context_root"],
 +    )
-+    listed = rctx.execute([str(opam), "list", "--root", str(root),
-+                           "--switch", switch, "--installed",
-+                           "--columns=name,version", "--short"])
-+    if listed.return_code != 0:
-+        fail("Cannot read resolved opam dependencies: " + listed.stderr)
-+    resolved = {}
-+    for line in listed.stdout.splitlines():
-+        fields = [field for field in line.replace("\t", " ").split(" ") if field]
-+        if len(fields) == 2:
-+            resolved[fields[0]] = fields[1]
++    resolved = _installed_versions(rctx, opam, root, switch)
 +    libraries = sorted(libraries)
 +    if not rctx.attr.update_lock and (
 +        resolved != rctx.attr.locked_versions or libraries != rctx.attr.locked_libraries
@@ -222,6 +260,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
 +opam_bootstrap = repository_rule(
 +    implementation = _opam_bootstrap_impl,
 +    attrs = {
++        "compiler": attr.label(mandatory = True, allow_single_file = True),
 +        "opam_version": attr.string(mandatory = True),
 +        "ocaml_version": attr.string(mandatory = True),
 +        "packages": attr.string_dict(mandatory = True),
@@ -237,8 +276,15 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
 +def _declare_locked_xdg(mctx, opam_version, ocaml_version, package_versions,
 +                        locked_versions, locked_libraries, update_lock, direct_deps, dev_deps,
 +                        obazl_pfx, debug, opam_verbosity, verbosity):
++    opam_compiler(
++        name = "opam.compiler", opam_version = opam_version,
++        ocaml_version = ocaml_version, locked_versions = locked_versions,
++        update_lock = update_lock,
++        debug = debug, opam_verbosity = opam_verbosity, verbosity = verbosity,
++    )
 +    opam_bootstrap(
 +        name = "opam.bootstrap", opam_version = opam_version,
++        compiler = "@opam.compiler//:compiler.json",
 +        ocaml_version = ocaml_version, packages = package_versions,
 +        locked_versions = locked_versions, locked_libraries = locked_libraries,
 +        update_lock = update_lock,
@@ -255,7 +301,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
 +            ocaml_version = ocaml_version, obazl_pfx = obazl_pfx,
 +            debug = debug, opam_verbosity = opam_verbosity, verbosity = verbosity,
 +        )
-+    root_deps = ["opam.ocamlsdk", "opam.lock"] + [
++    root_deps = ["opam.ocamlsdk", "opam.lock", "opam.compiler"] + [
 +        obazl_pfx + pkg for pkg in direct_deps if pkg not in OBAZL_PKGS
 +    ]
 +    root_dev_deps = [
@@ -274,7 +320,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
  ##################################
  def _throw_cmd_error(cmd, r):
      print("cmd: %s" % cmd)
-@@ -193,6 +303,10 @@
+@@ -193,6 +348,10 @@
      verbosity     = 0
      root_module   = None
      config_file   = "obazl.opamrc"
@@ -285,7 +331,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
      direct_deps   = []
      dev_deps      = []
      opamtgt       = None
-@@ -232,6 +346,18 @@
+@@ -232,6 +391,18 @@
                      dev_deps.extend(
                          {"utop": utop})
              for cfg in m.tags.deps:
@@ -304,7 +350,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
                  config_file = cfg._opam_config_file
                  if mctx.is_dev_dependency(cfg):
                      dev_deps.extend(cfg.pkgs)
-@@ -268,6 +394,18 @@
+@@ -268,6 +439,18 @@
          else:
              # non-root modules
              for cfg in m.tags.deps:
@@ -323,7 +369,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
                  if mctx.is_dev_dependency(cfg):
                      dev_deps.extend(cfg.pkgs)
                  else:
-@@ -291,6 +429,15 @@
+@@ -291,6 +474,15 @@
      ## detect whether or not we are in an opam install env.
      if mctx.getenv("OBAZL_OPAM_ENV"):
          toolchain = "opam"
@@ -339,7 +385,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
  
      config_pkg_tool = _build_config_tool(mctx, toolchain,
                                           debug, verbosity)
-@@ -377,6 +524,7 @@
+@@ -377,6 +569,7 @@
               opam_version,
               ocaml_version,
               direct_deps + dev_deps,
@@ -347,7 +393,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
               debug,
               opam_verbosity,
               verbosity)
-@@ -390,6 +538,22 @@
+@@ -390,6 +583,22 @@
      else:
          fail("unrecognized toolchain: %s" % toolchain)
      # if debug > 0: print(print_cwd(mctx))
@@ -370,7 +416,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
  
      opampath = str(opam)
      rootpath = str(opamroot)
-@@ -483,7 +647,7 @@
+@@ -483,7 +692,7 @@
                    debug         = debug,
                    verbosity     = verbosity)
      ## configure all deps
@@ -379,7 +425,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
      # if verbosity > 0: print("\n\tRegistering repos for opam pkgs")
  
      tot = len(deps)
-@@ -501,6 +665,7 @@
+@@ -501,6 +710,7 @@
              "\n  Registering repo {n} of {tot}: {p}".format(
                  n=i+1, tot=tot, p=pkg))
          opam_dep(name=pkg,
@@ -387,7 +433,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
                   install = False,
                   opam = opampath,
                   switch = switch,
-@@ -514,7 +679,7 @@
+@@ -514,7 +724,7 @@
                   )
          # if debug > 1: print("done")
  
@@ -396,7 +442,7 @@ diff --git a/extensions/opam.bzl b/extensions/opam.bzl
      # if stublibs_direct:
      #     rmdirects.append("opam.stublibs")
      for dep in direct_deps:
-@@ -633,6 +798,7 @@
+@@ -633,6 +843,7 @@
                      mandatory = False,
                      default = "5.3.0"
                  ),

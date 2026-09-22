@@ -13,6 +13,8 @@
 # Set CANDACE_BAZEL_WORKSPACE to build another workspace with the same launcher.
 # Set CANDACE_BAZEL_DISK_CACHE to pass a mounted disk-cache path to build, test,
 # and run commands. Startup flags and other commands are forwarded unchanged.
+# Set CANDACE_OCAML_TOOLCHAIN_CACHE to reuse a separately validated OCaml
+# installation at a stable container path across independent output bases.
 #
 # Usage: tools/bazel.sh <bazel arguments...>
 set -Eeuo pipefail
@@ -43,6 +45,16 @@ mkdir -p -- "$cache_root/home" "$cache_root/output"
 # usable after the container exits, including from a standalone module checkout.
 output_root=$(cd -- "$cache_root/output" && pwd -P)
 
+toolchain_mount=()
+if [[ -n "${CANDACE_OCAML_TOOLCHAIN_CACHE:-}" ]]; then
+  mkdir -p -- "$CANDACE_OCAML_TOOLCHAIN_CACHE"
+  toolchain_root=$(cd -- "$CANDACE_OCAML_TOOLCHAIN_CACHE" && pwd -P)
+  toolchain_mount=(
+    --volume "$toolchain_root:/csf-ocaml-toolchain"
+    --env CSF_OCAML_TOOLCHAIN_ROOT=/csf-ocaml-toolchain
+  )
+fi
+
 bazel_arguments=("$@")
 if [[ -n "${CANDACE_BAZEL_DISK_CACHE:-}" ]]; then
   for ((argument_index = 0; argument_index < ${#bazel_arguments[@]}; argument_index++)); do
@@ -69,6 +81,7 @@ exec docker run --rm \
   --user "$(id -u):$(id -g)" \
   --env HOME=/bazel-home \
   --env USER="${USER:-bazel}" \
+  "${toolchain_mount[@]}" \
   --volume "$cache_root/home:/bazel-home" \
   --volume "$cache_root/output:$output_root" \
   --volume "$cache_root/output:/bazel-output" \

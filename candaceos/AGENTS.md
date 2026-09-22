@@ -25,10 +25,11 @@ Read [`../AGENTS.md`](../AGENTS.md) first: it is the guide for this repository
 as a whole, and it owns the export contract in full. The short version, because
 acting on it wrongly is expensive:
 
-- **Nothing lands here.** The repository is generated from one monorepo
-  revision, has no PR flow, and the exporter halts on any divergence from the
-  snapshot it last published — so a commit made here wedges every future
-  export rather than being quietly overwritten.
+- **Source changes belong upstream.** The repository is generated from one
+  monorepo revision. Review and merge the exporter's `candace-export` PR against
+  `main`; author fixes in the monorepo. The exporter halts on any divergence
+  from its recorded snapshot, so a hand-written destination commit blocks
+  future exports.
 - **A fix belongs in the monorepo**, under its `candace/candaceos/` folder. If
   you cannot reach that repository, say exactly that and stop.
 - **Version identity is the `export-<sha12>` tag**, or the source revision in
@@ -417,9 +418,11 @@ when it is unset rather than guessing a repository.
 
 Changes are made in the monorepo's `candace/candaceos/` folder only.
 
-- **Every edit is a private staging snapshot.** This folder sits inside an
-  active export root: the moment a change reaches `main`, the whole `candace/`
-  tree is published to `candacelabs/csf_staging` and tagged. Run `candace export validate`
+- **Every edit enters the private staging review.** This folder sits inside an
+  active export root: a source `main` change proposes the whole `candace/`
+  tree in a `candacelabs/csf_staging` snapshot PR. After that PR is reviewed and
+  merged, rerunning the publisher verifies the snapshot and creates its tags
+  and release. Run `candace export validate`
   and `candace export preview`
   (or `python3 tools/component_export.py validate|preview`) before review.
   The exporter is not a secret scanner; review the actual diff as public

@@ -1,10 +1,12 @@
 # Standalone CSF onboarding
 
-Use this guide from a fresh clone of the private `candacelabs/csf` repository.
+Use this guide from a fresh clone of the private staging repository, with
+access granted by its owner. The reviewed snapshot currently ships to
+`candacelabs/csf_staging`; publication to `candacelabs/csf` is a later step.
 
 ```sh
-git clone git@github.com:candacelabs/csf.git
-cd csf
+git clone git@github.com:candacelabs/csf_staging.git
+cd csf_staging
 ./install.sh
 candace csf up
 ```
@@ -60,10 +62,16 @@ COPILOT_GITHUB_TOKEN=... candace csf up
 in its private state directory. Without a provider token, the core runtime
 starts and reports why Workbench scheduling is disabled.
 
-`candace csf key` creates the one opaque agent-MCP bearer key if needed and
+`candace csf key` creates the private agent-MCP signing key if needed and
 prints it. The file lives at `$CANDACE_CSF_STATE_DIR/agent-mcp-key` (or
-`~/.local/state/csf/agent-mcp-key`) with mode `0600`. Workbench attaches it to
-agent sessions. Do not put its output in source, prompts, logs or receipts.
+`~/.local/state/csf/agent-mcp-key`) with mode `0600`. Workbench keeps this key
+host-side and attaches a derived HMAC-SHA256 bearer credential bound to each
+agent ID and session ID. Changing either identity header invalidates the
+credential; the signing key itself is not accepted as a bearer credential.
+Existing sessions using the old shared bearer key must be recreated through
+Workbench. Credentials have no independent expiry or revocation and remain
+valid for that identity tuple until signing-key rotation. Do not put the key
+or session credentials in source, prompts, logs or receipts.
 
 ## Generated documentation and architecture checks
 

@@ -44,6 +44,9 @@ var _ = Describe("Workbench native MCP configuration", func() {
 	It("binds an agent session to the protected CSF MCP route", func() {
 		authenticator, err := csf.NewAgentMCPAuthenticator([]byte("agent-mcp-fixture-key"))
 		Expect(err).NotTo(HaveOccurred())
+		headers, err := authenticator.AgentMCPHeaders("agent-mcp-test", "2d6d5a52-ae7a-4f8d-b89f-e58beaa4a735")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(headers.Get(csf.AgentMCPAuthorizationHeader)).NotTo(ContainSubstring("agent-mcp-fixture-key"))
 		resolver := workbenchMCPServerResolver("http://workbench.invalid/", nil, authenticator)
 
 		servers, err := resolver(context.Background(), copilotadapter.BridgeSessionSpec{
@@ -54,7 +57,7 @@ var _ = Describe("Workbench native MCP configuration", func() {
 		Expect(servers).To(HaveLen(1))
 		Expect(servers[workbenchCSFServer]).To(Equal(copilot.MCPHTTPServerConfig{
 			URL: "http://workbench.invalid/mcp/agent", Tools: []string{workbenchAllTools}, Headers: map[string]string{
-				csf.AgentMCPAuthorizationHeader: "Bearer agent-mcp-fixture-key",
+				csf.AgentMCPAuthorizationHeader: headers.Get(csf.AgentMCPAuthorizationHeader),
 				csf.AgentMCPAgentIDHeader:       "agent-mcp-test",
 				csf.AgentMCPSessionIDHeader:     "2d6d5a52-ae7a-4f8d-b89f-e58beaa4a735",
 			},

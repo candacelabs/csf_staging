@@ -1,0 +1,72 @@
+name: Prepare or restore Bazel runtime dependencies
+description: Split cold Go and Rust dependency compilation from complete target checks, using only content-addressed caches.
+
+inputs:
+  stage:
+    description: go, rust-base, rust-network, rust-support, or rust-deps
+    required: true
+  mode:
+    description: prepare builds a missing stage; restore requires its successful preparation.
+    default: restore
+
+runs:
+  using: composite
+  steps:
+    - name: Identify the pinned dependency graph
+      id: key
+      shell: bash
+      env:
+        ACTION_ROOT: ${{ github.action_path }}
+        STAGE: ${{ inputs.stage }}
+        MODE: ${{ inputs.mode }}
+      run: |
+        set -Eeuo pipefail
+        case "$STAGE" in go|rust-base|rust-network|rust-support|rust-deps) ;; *) exit 2 ;; esac
+        case "$STAGE" in
+          rust-network) printf 'previous=rust-base\n' >> "$GITHUB_OUTPUT" ;;
+          rust-support) printf 'previous=rust-network\n' >> "$GITHUB_OUTPUT" ;;
+          rust-deps) printf 'previous=rust-support\n' >> "$GITHUB_OUTPUT" ;;
+        esac
+        case "$MODE" in prepare|restore) ;; *) exit 2 ;; esac
+        printf 'value=%s\n' "$(bash "$ACTION_ROOT/key.sh")" >> "$GITHUB_OUTPUT"
+        printf 'CANDACE_BAZEL_CACHE=%s/.git/csf-bazel-runtime\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+        printf 'CANDACE_BAZEL_DISK_CACHE=/bazel-home/sharedtaskcache\n' >> "$GITHUB_ENV"
+
+    # Keep the literal paths identical in every job. Output bases, extracted
+    # repositories, symlinks, and test verdicts are never transferred.
+    - name: Restore successfully prepared content
+      id: restore
+      uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      with:
+        path: |
+          .git/csf-bazel-runtime/output/cache/repos/v1/
+          .git/csf-bazel-runtime/home/sharedtaskcache/
+        key: csf-bazel-runtime-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.stage }}-${{ steps.key.outputs.value }}
+        fail-on-cache-miss: ${{ inputs.mode == 'restore' }}
+
+    - name: Require the preceding Rust preparation
+      if: inputs.mode == 'prepare' && steps.key.outputs.previous != '' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      with:
+        path: |
+          .git/csf-bazel-runtime/output/cache/repos/v1/
+          .git/csf-bazel-runtime/home/sharedtaskcache/
+        key: csf-bazel-runtime-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.key.outputs.previous }}-${{ steps.key.outputs.value }}
+        fail-on-cache-miss: true
+
+    - name: Compile the pinned preparation targets
+      if: inputs.mode == 'prepare' && steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        ACTION_ROOT: ${{ github.action_path }}
+        STAGE: ${{ inputs.stage }}
+      run: bash "$ACTION_ROOT/prepare.sh" "$STAGE"
+
+    - name: Save only a successful preparation
+      if: inputs.mode == 'prepare' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      with:
+        path: |
+          .git/csf-bazel-runtime/output/cache/repos/v1/
+          .git/csf-bazel-runtime/home/sharedtaskcache/
+        key: ${{ steps.restore.outputs.cache-primary-key }}
