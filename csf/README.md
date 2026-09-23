@@ -1,20 +1,43 @@
-# CSF — The Cerebrospinal Fluid
+<div align="center">
+  <img src="../docs/assets/csf-wordmark.svg" width="440" alt="CSF — The Cerebrospinal Fluid">
+  <p><b>One Go runtime. Agent work, typed tools, shared knowledge, observable experiments.</b></p>
+  <p>
+    <a href="../LICENSE"><img src="../docs/assets/badge-license.svg" alt="license: Apache-2.0"></a>
+    <a href="#10-contracts-and-release-evidence"><img src="../docs/assets/badge-version.svg" alt="version: 0.1.0"></a>
+    <a href="#7-try-the-library"><img src="../docs/assets/badge-go.svg" alt="Go: 1.26"></a>
+    <a href="https://arxiv.org/abs/2603.07442"><img src="../docs/assets/badge-lithe.svg" alt="arXiv: LITHE 2603.07442"></a>
+    <a href="#1-introduction"><img src="../docs/assets/badge-status.svg" alt="status: developer preview"></a>
+  </p>
+  <p><i>Developer preview. The first release makes no stability or compatibility promise.</i></p>
+  <p>
+    <a href="#7-try-the-library"><b>Try the library</b></a> ·
+    <a href="#8-run-the-workbench"><b>Workbench</b></a> ·
+    <a href="#agent-native-onboarding"><b>Agent-native onboarding</b></a> ·
+    <a href="#4-proofs-not-just-hardware"><b>Proofs</b></a> ·
+    <a href="EXTENDING.md"><b>Add your code</b></a> ·
+    <a href="AGENTS.md"><b>Agent instructions</b></a> ·
+    <a href="#9-examples-and-boundaries"><b>Examples</b></a> ·
+    <a href="docs/generated/ontology_cgen.md"><b>Terms</b></a> ·
+    <a href="#11-citation"><b>Citation</b></a>
+  </p>
+</div>
 
-![LITHE Figure 2: CPU 0 housekeeping, CPU 1 spine, CPU 2 brain, CPU 3 transport](https://arxiv.org/html/2603.07442v1/figures/fig_architecture.png)
+<hr>
 
-*Architecture inspiration: [LITHE, Figure 2 — He Kai Lim and Tyler R. Clites](https://arxiv.org/html/2603.07442v1#S1.F2).
-CSF coordinates the work, knowledge, and evidence around the brain and spine.*
+## 1. Introduction
 
-**One Go runtime. Agent work, typed tools, shared knowledge, observable experiments.**
+CSF — The Cerebrospinal Fluid — is the library and runtime at the centre of
+this repository: one Go process that composes agent sessions, typed tools,
+knowledge and experiment evidence around a brain and a spine. The
+[repository front page](../README.md) is the overview; this page is the
+library's own technical guide.
 
+**CSF's first release, 0.1.0, is a developer preview.** It makes no stability
+or compatibility promise beyond what this page states.
 This is a breaking integration baseline. Pin a reviewed snapshot and use the
 examples shipped with it. The public Go import is
 `github.com/candacelabs/csf/csf`; this release does not introduce a `/v2`
 module or claim backward compatibility for earlier experimental CSF interfaces.
-
-[Try the library](#try-the-library) · [Workbench](#run-the-workbench) ·
-[Agent-native onboarding](#agent-native-onboarding) · [Add your code](EXTENDING.md) · [Agent instructions](AGENTS.md) ·
-[Examples](#examples-and-boundaries) · [Terms](docs/generated/ontology_cgen.md)
 
 | Work | Knowledge | Evidence |
 |---|---|---|
@@ -23,7 +46,42 @@ module or claim backward compatibility for earlier experimental CSF interfaces.
 The brain proposes. The spine executes admitted behavior. CSF supplies the
 contracts and coordination that let each experiment inform the next decision.
 
-## Agent-native onboarding
+## 2. Why Go: no IPC inside LITHE's CPU 0 (Housekeeping)
+
+![LITHE Figure 2: CPU 0 housekeeping, CPU 1 spine, CPU 2 brain, CPU 3 transport](https://arxiv.org/html/2603.07442v1/figures/fig_architecture.png)
+
+*[Figure 2](https://arxiv.org/html/2603.07442v1#S1.F2) from Lim and Clites (2026) [[1](#ref-lithe)],
+arXiv:2603.07442. © the authors. Architecture inspiration: CSF coordinates the
+work, knowledge, and evidence around the brain and spine.*
+
+LITHE ([Lim and Clites, 2026](#ref-lithe)) names CPU 0 (Housekeeping) (LITHE
+[§III-B](https://arxiv.org/html/2603.07442v1#S3.SS2)) and treats inter-process
+communication (IPC) as an architectural concern (LITHE
+[§III-C](https://arxiv.org/html/2603.07442v1#S3.SS3)). CSF applies that framing to the coordination work
+inside the housekeeping layer: tools, sessions, schedules, knowledge and observation.
+
+**CSF prevents the avoidable IPC problem within this layer by composing those
+capabilities in one Go process.** Services are Go libraries selected with functional
+options. They exchange typed values through function calls and coordinate
+concurrent work with goroutines and channels. An internal handoff needs no
+socket, wire serialization or separate service daemon. Go's
+[concurrency primitives](https://go.dev/doc/effective_go#concurrency) let waiting
+on tools, storage and model calls coexist in the same runtime; contexts and
+explicit ownership give each operation a cancellation and cleanup path.
+The [consumer example](../examples/csf-consumer/main.go) shows that composition.
+
+PostgreSQL, OpenSearch, Langfuse and external model or simulator processes keep
+their protocol boundaries. LITHE's Brain–Spine shared-memory IPC remains a
+separate integration boundary. The CPU 0 mapping describes CSF's role; CPU
+affinity and isolation require deployment configuration.
+
+The repository front page draws this as a
+[CPU 0 mapping diagram](../README.md#2-why-csf-no-ipc-inside-cpu-0), with the
+same boundaries.
+
+<a id="agent-native-onboarding"></a>
+
+## 3. Agent-native onboarding
 
 CSF is intended to be **agent-native**. Alongside human-readable READMEs,
 it exposes an MCP server. The goal is a **self-changeable MCP surface** that
@@ -81,29 +139,41 @@ validate schemas, and rejects name collisions with CSF operations. The host
 still owns listener startup, authentication, repository authorization and
 consumer checks.
 
-## Why Go: the IPC problem within CPU 0 housekeeping
+## 4. Proofs, not just hardware
 
-LITHE names [CPU 0 (Housekeeping)](https://arxiv.org/html/2603.07442v1#S3.SS2)
-and treats [inter-process communication (IPC)](https://arxiv.org/html/2603.07442v1#S3.SS3)
-as an architectural concern. CSF applies that framing to the coordination work
-inside the housekeeping layer: tools, sessions, schedules, knowledge and observation.
+LITHE bounds a model-written controller with hardware: its user-space real-time
+design "lacks the formal mathematical guarantees of a verified real-time
+operating system" (LITHE [§V-A](https://arxiv.org/html/2603.07442v1#S5.SS1)), and
+where control theory is unvalidated, "safety must be enforced via strict
+hardware-level limits on torque and velocity"
+(LITHE [§V-C](https://arxiv.org/html/2603.07442v1#S5.SS3)). CSF's direction is the
+complementary guarantee: a typed, bounded controller language whose compiled
+code is proved to compute what its source says, so a model chooses among
+checked options instead of emitting arbitrary code.
 
-**Go solves the avoidable IPC problem within this layer by composing those
-capabilities in one process.** Services are Go libraries selected with functional
-options. They exchange typed values through function calls and coordinate
-concurrent work with goroutines and channels. An internal handoff needs no
-socket, wire serialization or separate service daemon. Go's
-[concurrency primitives](https://go.dev/doc/effective_go#concurrency) let waiting
-on tools, storage and model calls coexist in the same runtime; contexts and
-explicit ownership give each operation a cancellation and cleanup path.
-The [consumer example](../examples/csf-consumer/main.go) shows that composition.
+[`examples/proof/BrainSpine.lean`](examples/proof/README.md) models the
+arithmetic slice of
+[`brainspine.proto`](../proto/candace/brainspine/v1/brainspine.proto) and
+machine-checks four theorems about that bounded model:
 
-PostgreSQL, OpenSearch, Langfuse and external model or simulator processes keep
-their protocol boundaries. LITHE's Brain–Spine shared-memory IPC remains a
-separate integration boundary. The CPU 0 mapping describes CSF's role; CPU
-affinity and isolation require deployment configuration.
+| Theorem | Guarantee |
+|---|---|
+| `compile_correct` | For every expression, inputs and existing stack, the compiled instructions push exactly the evaluated value and preserve the stack. |
+| `evaluate_bounds` | Every expression evaluates within the numeric saturation bound. |
+| `compiled_actuator_correct` | Compiled code run from an empty stack, then through the actuator clamp, agrees exactly with the clamped source evaluator. |
+| `compiled_actuator_bounds` | Every compiled expression produces an actuator value in `[-1000, 1000]`. |
 
-## System diagrams
+`bash csf/examples/proof/check.sh` runs the pinned Lean release with
+`--trust=0` and admits only Lean's standard `propext`, `Classical.choice` and
+`Quot.sound` axioms. What is not proved: agreement between the Lean model and
+the canonical wire semantics (a reviewed translation boundary), equivalence of
+the native Go and Rust evaluators (conformance tests only), and `csfc` itself —
+its [Lean verifier](compiler/verification/README.md) is a stub that returns
+`notImplemented`. The actuator clamp proves a numeric range only; timing,
+stability, collision avoidance, safe controller switching and physical safety
+remain outside every theorem.
+
+## 5. System diagrams
 
 These diagrams are **generated**, not hand-maintained. The shared
 [architecture model](docs/generated/architecture.csf) also produces the
@@ -251,14 +321,13 @@ flowchart LR
 ```
 <!-- /csf:diagram simulation -->
 
-## The architecture for self-improving autonomy
+## 6. The architecture for self-improving autonomy
 
 The direction is a system that can inspect a result, propose a change, evaluate
 it against a fixed baseline, and retain the evidence for its next decision.
 Improvement is something to measure, not a consequence of adding an agent loop.
 
-[LITHE, by He Kai Lim and Tyler R. Clites](https://arxiv.org/abs/2603.07442),
-separates best-effort reasoning, real-time control, transport, and housekeeping.
+LITHE [[1](#ref-lithe)] separates best-effort reasoning, real-time control, transport, and housekeeping.
 Its **CPU 0: Housekeeping** box makes CSF's intended position concrete: coordinate
 tools, records, worker lifetimes and experiments around the brain and spine.
 That is our architectural mapping; CSF does not currently implement LITHE's
@@ -266,11 +335,14 @@ loader, CPU isolation, or real-time controller hot swap.
 
 ![LITHE Figure 1: hierarchical brain and spine control](https://arxiv.org/html/2603.07442v1/figures/fig_teaser.png)
 
-Figures 2 and 1 are embedded from the authors' [paper](https://arxiv.org/html/2603.07442v1).
-They illustrate LITHE, not measured CSF hardware behavior. Their authors retain
+*[Figure 1](https://arxiv.org/html/2603.07442v1#S1.F1) from Lim and Clites (2026) [[1](#ref-lithe)],
+arXiv:2603.07442. © the authors.*
+
+Figures 2 and 1 are linked from the authors' [paper](https://arxiv.org/html/2603.07442v1),
+not copied. They illustrate LITHE, not measured CSF hardware behavior. Their authors retain
 ownership; CSF's source license does not relicense these externally hosted figures.
 
-## Try the library
+## 7. Try the library
 
 Use Go 1.26. The smallest example needs no database, GPU, model account, or
 extra service process. From the public repository root:
@@ -316,7 +388,7 @@ For Bazel consumers, use the public repository's
 [archive instructions](../README.md#consume-it-in-60-seconds) and depend on
 `@csf//csf`. Building that library does not start a host or database.
 
-## Run the Workbench
+## 8. Run the Workbench
 
 For native deployment, the [optional dependency package](../app/csf/native/README.md)
 builds selected PostgreSQL, OpenSearch, and Langfuse dependencies as independent
@@ -389,7 +461,7 @@ into a second schema. The optional JSON CLI uses the same generated contract:
 printf '%s\n' '{}' | ./out/csf call --endpoint http://127.0.0.1:14111 GetSnapshot
 ```
 
-## Examples and boundaries
+## 9. Examples and boundaries
 
 | Component | Example and implementation | What the consumer supplies |
 |---|---|---|
@@ -408,7 +480,7 @@ physical robot safety remain consumer work. See the simulator
 [integration contract](examples/simulators/CONSUMER.md) for required interfaces
 and evidence. A configured tool is not evidence that a job ran.
 
-## Contracts and release evidence
+## 10. Contracts and release evidence
 
 [`csfc`](compiler/README.md) is CSF's architecture compiler, with its own pinned
 OCaml build and executable under `bin/`. Its [Lean verifier](compiler/verification/README.md)
@@ -441,3 +513,48 @@ An open snapshot PR is a release candidate, not a published release tag.
 Keep archive hashes, source revision, test receipts and any deployment receipt
 separate. Generated-code and generated-documentation percentages are separate
 measurements; neither is a proof coverage score.
+
+## 11. Citation
+
+<a id="ref-lithe"></a>
+
+**[1]** He Kai Lim and Tyler R. Clites. *LITHE: Bridging Best-Effort Python and Real-Time
+C++ for Hot-Swapping Robotic Control Laws on Commodity Linux.* arXiv:2603.07442
+[cs.RO], 2026. Submitted to IROS 2026.
+<https://doi.org/10.48550/arXiv.2603.07442>
+
+```bibtex
+@misc{lim2026lithe,
+  title         = {{LITHE}: Bridging Best-Effort {Python} and Real-Time {C++} for Hot-Swapping Robotic Control Laws on Commodity {Linux}},
+  author        = {Lim, He Kai and Clites, Tyler R.},
+  year          = {2026},
+  eprint        = {2603.07442},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
+  doi           = {10.48550/arXiv.2603.07442},
+  url           = {https://arxiv.org/abs/2603.07442},
+  note          = {Submitted to IROS 2026}
+}
+```
+
+CSF's architecture is inspired by LITHE [1]. To cite CSF itself, name the
+exact release tag you used:
+
+```bibtex
+@software{csf2026,
+  title   = {CSF — The Cerebrospinal Fluid},
+  author  = {{Candace Labs}},
+  version = {0.1.0},
+  year    = {2026},
+  url     = {https://github.com/candacelabs/csf}
+}
+```
+
+The LITHE paper and its figures are distributed under arXiv's
+[non-exclusive distribution license](http://arxiv.org/licenses/nonexclusive-distrib/1.0/),
+not a Creative Commons license. © the authors; this repository's license does
+not cover them, and no figure file is copied into it.
+
+## License
+
+Apache License 2.0. See [`LICENSE`](../LICENSE).
