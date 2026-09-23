@@ -259,6 +259,7 @@ ocaml_module(
 ocaml_test(
     name = "frontend_test",
     size = "small",
+    args = ["$(rootpath :language.ebnf)"],
     data = ["language.ebnf"],
     main = ":Frontend_test",
 )
@@ -312,6 +313,7 @@ ocaml_module(
 ocaml_test(
     name = "compiler_test",
     size = "small",
+    args = ["$(rootpath :language.ebnf)"],
     data = ["language.ebnf"],
     main = ":Compiler_test",
 )
@@ -345,6 +347,7 @@ ocaml_module(
 ocaml_test(
     name = "decode_test",
     size = "small",
+    args = ["$(rootpath :language.ebnf)"],
     data = ["language.ebnf"],
     main = ":Decode_test",
 )
@@ -387,14 +390,17 @@ ocaml_module(
     struct = "symbol_codegen_test.ml",
     deps = [
         ":Codegen_header",
+        ":Frontend_grammar",
         ":Model",
         ":Symbol_codegen",
+        ":Syntax_cgen",
     ],
 )
 
 ocaml_test(
     name = "symbol_codegen_test",
     size = "small",
+    args = ["$(rootpath :language.ebnf)"],
     data = ["language.ebnf"],
     main = ":Symbol_codegen_test",
 )

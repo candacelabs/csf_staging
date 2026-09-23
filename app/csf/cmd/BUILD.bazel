@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 go_library(
     name = "cmd_lib",
     srcs = [
+        "configuration.go",
         "email.go",
         "links.go",
         "main.go",
@@ -36,6 +37,7 @@ go_library(
         "@com_github_jackc_pgx_v5//pgxpool",
         "@com_github_jackc_pgx_v5//stdlib",
         "@com_github_moby_moby_client//:client",
+        "@com_github_modelcontextprotocol_go_sdk//mcp",
         "@com_github_prometheus_client_golang//prometheus",
         "@io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracehttp//:otlptracehttp",
         "@org_golang_google_protobuf//encoding/protojson",
@@ -53,6 +55,7 @@ go_binary(
 go_test(
     name = "cmd_test",
     srcs = [
+        "configuration_test.go",
         "email_test.go",
         "links_test.go",
         "main_runtime_test.go",

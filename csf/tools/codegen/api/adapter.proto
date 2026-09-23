@@ -73,6 +73,10 @@ service Research {
   rpc IngestDocument(candace.brainspine.v1.IngestDocumentRequest) returns (candace.brainspine.v1.IngestDocumentResponse) {
     option (google.api.http) = {post: "/api/knowledge/documents" body: "*"};
   }
+  // Explain the pinned CSF contract and index explicitly selected onboarding sources for retrieval.
+  rpc LearnAboutCSF(candace.brainspine.v1.LearnAboutCSFRequest) returns (candace.brainspine.v1.LearnAboutCSFResponse) {
+    option (google.api.http) = {post: "/api/onboarding/learn" body: "*"};
+  }
   // Open one saved source document and read its words.
   rpc GetDocument(candace.brainspine.v1.GetDocumentRequest) returns (candace.brainspine.v1.GetDocumentResponse) {
     option (google.api.http) = {post: "/api/knowledge/document" body: "*"};

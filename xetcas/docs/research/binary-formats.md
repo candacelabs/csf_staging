@@ -1,8 +1,9 @@
-[local clone paths genericized for publication - citations unmodified]
+[Publication edit: the original local clone path was removed; citations below
+refer to the pinned upstream source revision.]
 
 # Xet-Core Storage & Binary Format Dossier — hashing, chunking, xorb, and MDB shard formats
 
-**Source**: huggingface/xet-core @ 77fc84d3d (2026-08-11), cloned at `/tmp/xet-research/scratchpad/xet-core`. All paths below are relative to that root. All multi-byte integers on disk/wire are **little-endian** (`xet_core_structures/src/utils/serialization_utils.rs:10-79` — every writer uses `to_le_bytes`, every reader `from_le_bytes`; hashes are written as raw 32 bytes).
+**Source**: [huggingface/xet-core @ `77fc84d3d077973dade91a216da5e6b4a1595ca0`](https://github.com/huggingface/xet-core/tree/77fc84d3d077973dade91a216da5e6b4a1595ca0), dated 2026-08-11. All paths below are relative to that repository root. All multi-byte integers on disk/wire are **little-endian** (`xet_core_structures/src/utils/serialization_utils.rs:10-79` — every writer uses `to_le_bytes`, every reader `from_le_bytes`; hashes are written as raw 32 bytes).
 
 ---
 

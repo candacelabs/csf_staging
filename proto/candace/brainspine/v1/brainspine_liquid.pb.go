@@ -169,6 +169,23 @@ func ValidateSourceDocument(message *SourceDocument) error {
 	return nil
 }
 
+// ValidateLearnAboutCSFRequest checks this message's annotated fields; it does not recurse.
+// A failed predicate returns *liquidproto.Error. Nil input also returns an error.
+func ValidateLearnAboutCSFRequest(message *LearnAboutCSFRequest) error {
+	if message == nil {
+		return fmt.Errorf("ValidateLearnAboutCSFRequest: nil *LearnAboutCSFRequest")
+	}
+	if !(len(message.RetrievalQuery) <= 4096) {
+		return &liquidproto.Error{
+			Message:   "candace.brainspine.v1.LearnAboutCSFRequest",
+			Field:     "retrieval_query",
+			Predicate: "len(this) <= 4096",
+			Value:     message.RetrievalQuery,
+		}
+	}
+	return nil
+}
+
 // ValidateSearchRequest checks this message's annotated fields; it does not recurse.
 // A failed predicate returns *liquidproto.Error. Nil input also returns an error.
 func ValidateSearchRequest(message *SearchRequest) error {

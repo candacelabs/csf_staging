@@ -6,7 +6,9 @@ composition continuous integration (CI) gate. The running application does not
 load these architecture files. Syntax is defined in Extended Backus-Naur Form
 (EBNF), a notation for grammar rules.
 
-This directory owns CSF's architecture compiler; `tools/csf_architecture` is a generated root compatibility mirror, so edit this canonical source.
+This directory owns CSF's architecture compiler and ships in the CSF export.
+The monorepo builds these same sources and BUILD definitions directly through
+its `@csf` repository; there is no second compiler tree to synchronize.
 
 The [documentation compiler](../language/README.md) separately owns the
 shared human vocabulary and documentation diagrams. This checker owns the
@@ -53,6 +55,35 @@ also requires its corresponding `Model` type; OCaml compilation checks that
 agreement in both directions. Missing inverse enum cases are compilation errors.
 Grammar generation cannot invent the meaning of a new concept.
 
+## Extend the language
+
+Consumers may adapt the language in their own vendored or forked CSF checkout.
+The grammar, semantic model, source policies and generators are all shipped
+source, with the same build used by the monorepo. Customization is optional;
+ordinary consumers can keep the upstream language and receive improvements by
+updating their CSF pin.
+
+| Change | Source to edit | Result |
+|---|---|---|
+| Accepted syntax and vocabulary | `language.ebnf` | Rebuilding regenerates and compiles `Syntax_cgen`; no handwritten vocabulary catalogue needs updating. |
+| Meaning of a new construct | `model.ml`, `decode.ml`, `validate.ml` | Typed decoding and semantic checks implement the construct. Syntax alone does not supply its behavior. |
+| Source policy | `go_policy.ml`, `generated_policy.ml`, `source_check.ml` | The rebuilt checker applies the consumer's policy. |
+| Generated projections | `emit.ml`, `symbol_codegen.ml`, `codegen_header.ml` | Rebuilding and running `csfc emit` produces the consumer's outputs. |
+| Human vocabulary and documentation diagrams | [Documentation compiler](../language/README.md) | Its source definition and generator produce the accompanying documentation. |
+
+Run the build and regression commands below from that checkout, then run
+`csfc check`, `csfc emit` and `csfc check-generated` against the consumer's
+architecture. Select its files with `--source`, `--root` and `--output`.
+`--grammar` selects syntax input for the executable; a vocabulary or semantic
+change also requires rebuilding the generated types and compiler. The flag
+does not load new semantic implementations into an existing binary.
+
+Small fixed grammar fixtures test generator behavior. The actual grammar's
+vocabulary is checked by compiling its generated module and round-tripping
+the parsed rules and terminals through that module. These are regression
+checks. Formal verification of the grammar and compiler in
+[Lean](../verification/README.md) is planned; the current verifier is a stub.
+
 ## What `cgen` means
 
 `cgen` denotes **Candace code generation**, named **CandaceCodegen** (historically
@@ -72,15 +103,20 @@ Upstream generators keep their own filenames and notices: protobuf `.pb.go`,
 SQLC output and other existing conventions are not renamed to `_cgen`.
 
 The compiler's shared header is configured at build time by
-[`Codegen_header.text`](codegen_header.ml). Edit that one value, rebuild and
-regenerate. It contains the generator identity, explicit development version,
-suffix explanation and `DO NOT EDIT`; the renderer supplies the comment syntax
+[`Codegen_header.banner`](codegen_header.ml). Edit that one definition, rebuild
+and regenerate. It contains a visible border, generator identity, explicit
+development version, suffix explanation, a separate `DO NOT EDIT` warning and
+regeneration guidance. The renderer supplies the comment syntax
 for OCaml, Mermaid or Markdown. The version is the configured generator version,
-not an inferred Git revision or evidence of a published release.
+not an inferred Git revision or evidence of a published release. The checker
+reads its identity and warning markers from the same module; it does not keep
+separate copies of the rendered banner. The configuration is checked in rather
+than taken from the invoking shell, so generation remains reproducible.
 
 This header covers this compiler's vocabulary, typed architecture, diagram,
 review and example receipt. Other generators remain unchanged in this slice;
 the file-policy checker continues recognizing their older Candacegen headers.
+Liquid Proto retains its existing protobuf filenames and headers.
 
 ## Use
 

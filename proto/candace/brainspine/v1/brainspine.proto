@@ -254,6 +254,37 @@ message IngestDocumentResult {
 }
 message IngestDocumentResponse { IngestDocumentResult result = 1; }
 
+// LearnAboutCSF returns the shipped onboarding guidance and indexes the
+// explicitly selected CSF and consumer source files through the knowledge
+// capability. The host configures both roots and their revisions; callers only
+// select relative consumer files after inspecting the authorized checkout.
+message LearnAboutCSFRequest {
+  repeated string consumer_paths = 1;
+  string retrieval_query = 2 [(candace.liquid.v1.field) = {expr: "len(this) <= 4096"}];
+  // Explicitly selected native Copilot CLI sessions. The host must opt in by
+  // configuring the read-only SDK bridge; an empty list performs no history read.
+  repeated string copilot_session_ids = 3;
+}
+
+message LearnAboutCSFResponse {
+  string guidance_markdown = 1;
+  bool knowledge_available = 2;
+  string knowledge_error = 3;
+  repeated IngestDocumentResult ingested = 4;
+  repeated string skipped_paths = 5;
+  SearchResult retrieval = 6;
+  repeated CopilotHistoryResult copilot_history = 7;
+}
+
+// CopilotHistoryResult records one typed native session projection. The
+// embedded ingestion receipt remains the durable queue and provenance result.
+message CopilotHistoryResult {
+  string session_id = 1;
+  uint64 event_count = 2;
+  IngestDocumentResult ingest = 3;
+  string error = 4;
+}
+
 enum ProjectionState {
   PROJECTION_STATE_UNSPECIFIED = 0;
   PROJECTION_STATE_PENDING = 1;

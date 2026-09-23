@@ -104,6 +104,18 @@ var _ = Describe("the ifacereturn analyzer", Ordered, func() {
 	})
 })
 
+var _ = Describe("generated source boundaries", func() {
+	It("uses generated types without reporting generated declarations", func() {
+		requireGoToolchain()
+		results := analysistest.Run(GinkgoTB(), materializeFixtures(), ifacereturn.Analyzer, "generatedboundary")
+		Expect(results).To(HaveLen(1))
+		Expect(results[0].Err).NotTo(HaveOccurred())
+		Expect(messages(results[0].Diagnostics)).To(Equal([]string{
+			"Handwritten returns the interface generatedboundary.IGenerated",
+		}))
+	})
+})
+
 var _ = Describe("Finding.Message", func() {
 	// The `// want` patterns above would still match if the arity clause
 	// silently disappeared from a multi-result signature, so the two message

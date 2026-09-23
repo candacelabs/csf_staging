@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync/atomic"
 
@@ -32,7 +33,11 @@ var (
 	ErrNotFound                      = errors.New("not found")
 	ErrConflict                      = errors.New("revision conflict")
 	ErrAgentConfigurationUnavailable = errors.New("agent configuration capability unavailable")
+	ErrMCPToolConflict               = errors.New("MCP tool name already registered")
+	ErrInvalidMCPTool                = errors.New("invalid MCP tool registration")
 )
+
+var mcpToolNamePattern = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,64}$`)
 
 // IHTTPDoer is the only network behavior the generated client consumes.
 type IHTTPDoer interface {
@@ -94,11 +99,16 @@ type Service struct {
 	theme               *workbenchTheme
 	agentConfigurations IAgentConfigurationStore
 	email               IEmailSender
+	onboarding          *OnboardingConfig
 	mcp                 *mcp.Server
+	consumerMCPTools    []mcpToolRegistrar
 	routes              []route
+	mcpToolNames        map[string]struct{}
 }
 
 type Option func(service *Service)
+
+type mcpToolRegistrar func(service *Service) error
 
 type route struct {
 	method  string
@@ -118,8 +128,33 @@ func WithAgentConfigurations(store IAgentConfigurationStore) Option {
 	return func(service *Service) { service.agentConfigurations = store }
 }
 
+func WithOnboarding(config OnboardingConfig) Option {
+	return func(service *Service) { service.onboarding = &config }
+}
+
+// WithMCPTool adds one typed consumer-owned tool to the same MCP server as
+// CSF's generated operations. The MCP SDK derives and validates the input and
+// output schemas from In and Out; CSF only supplies registration ordering and
+// collision checks.
+func WithMCPTool[In, Out any](tool mcp.Tool, handler mcp.ToolHandlerFor[In, Out]) Option {
+	return func(service *Service) {
+		service.consumerMCPTools = append(service.consumerMCPTools, func(service *Service) error {
+			if !mcpToolNamePattern.MatchString(tool.Name) || handler == nil {
+				return fmt.Errorf("%w: name and handler are required", ErrInvalidMCPTool)
+			}
+			if _, exists := service.mcpToolNames[tool.Name]; exists {
+				return fmt.Errorf("%w: %q", ErrMCPToolConflict, tool.Name)
+			}
+			toolCopy := tool
+			mcp.AddTool[In, Out](service.mcp, &toolCopy, handler)
+			service.mcpToolNames[tool.Name] = struct{}{}
+			return nil
+		})
+	}
+}
+
 func New(options ...Option) (*Service, error) {
-	service := &Service{wake: make(chan struct{}, projectionWorkerCount), theme: &workbenchTheme{}}
+	service := &Service{wake: make(chan struct{}, projectionWorkerCount), theme: &workbenchTheme{}, mcpToolNames: make(map[string]struct{})}
 	for _, option := range options {
 		if option != nil {
 			option(service)
@@ -133,6 +168,14 @@ func New(options ...Option) (*Service, error) {
 	}
 	service.mcp = mcp.NewServer(&mcp.Implementation{Name: mcpImplementationName, Version: "0.1.0"}, nil)
 	service.registerOperations()
+	for _, operation := range HumanOperations() {
+		service.mcpToolNames[operation.Name] = struct{}{}
+	}
+	for _, register := range service.consumerMCPTools {
+		if err := register(service); err != nil {
+			return nil, err
+		}
+	}
 	return service, nil
 }
 

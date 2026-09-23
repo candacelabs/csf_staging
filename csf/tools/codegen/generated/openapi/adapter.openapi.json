@@ -744,6 +744,65 @@
         }
       }
     },
+    "/api/onboarding/learn": {
+      "post": {
+        "tags": [
+          "Research"
+        ],
+        "summary": "Explain the pinned CSF contract and index explicitly selected onboarding sources for retrieval.",
+        "operationId": "Research_LearnAboutCSF",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "consumerPaths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "copilotSessionIds": {
+                    "type": "array",
+                    "description": "Explicitly selected native Copilot CLI sessions. The host must opt in by\nconfiguring the read-only SDK bridge; an empty list performs no history read.",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "retrievalQuery": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "An unexpected error response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/google.rpc.Status"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "A successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/candace.brainspine.v1.LearnAboutCSFResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/knowledge/document": {
       "post": {
         "tags": [
@@ -1248,6 +1307,25 @@
           }
         }
       },
+      "candace.brainspine.v1.CopilotHistoryResult": {
+        "type": "object",
+        "description": "CopilotHistoryResult records one typed native session projection. The\nembedded ingestion receipt remains the durable queue and provenance result.",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "eventCount": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "ingest": {
+            "$ref": "#/components/schemas/candace.brainspine.v1.IngestDocumentResult"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        }
+      },
       "candace.brainspine.v1.DocumentRequest": {
         "type": "object",
         "properties": {
@@ -1523,6 +1601,41 @@
           },
           "vectorProjectionRef": {
             "type": "string"
+          }
+        }
+      },
+      "candace.brainspine.v1.LearnAboutCSFResponse": {
+        "type": "object",
+        "properties": {
+          "copilotHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/candace.brainspine.v1.CopilotHistoryResult"
+            }
+          },
+          "guidanceMarkdown": {
+            "type": "string"
+          },
+          "ingested": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/candace.brainspine.v1.IngestDocumentResult"
+            }
+          },
+          "knowledgeAvailable": {
+            "type": "boolean"
+          },
+          "knowledgeError": {
+            "type": "string"
+          },
+          "retrieval": {
+            "$ref": "#/components/schemas/candace.brainspine.v1.SearchResult"
+          },
+          "skippedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

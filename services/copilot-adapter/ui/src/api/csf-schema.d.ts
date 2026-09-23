@@ -276,6 +276,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/onboarding/learn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Explain the pinned CSF contract and index explicitly selected onboarding sources for retrieval. */
+        post: operations["Research_LearnAboutCSF"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/knowledge/document": {
         parameters: {
             query?: never;
@@ -476,6 +493,15 @@ export interface components {
             schemaVersion?: number;
             steering?: components["schemas"]["candace.brainspine.v1.Expression"];
         };
+        /** @description CopilotHistoryResult records one typed native session projection. The
+         *     embedded ingestion receipt remains the durable queue and provenance result. */
+        "candace.brainspine.v1.CopilotHistoryResult": {
+            error?: string;
+            /** Format: uint64 */
+            eventCount?: string;
+            ingest?: components["schemas"]["candace.brainspine.v1.IngestDocumentResult"];
+            sessionId?: string;
+        };
         "candace.brainspine.v1.DocumentRequest": {
             revision?: string;
             sourceId?: string;
@@ -579,6 +605,15 @@ export interface components {
             textProjectionRef?: string;
             title?: string;
             vectorProjectionRef?: string;
+        };
+        "candace.brainspine.v1.LearnAboutCSFResponse": {
+            copilotHistory?: components["schemas"]["candace.brainspine.v1.CopilotHistoryResult"][];
+            guidanceMarkdown?: string;
+            ingested?: components["schemas"]["candace.brainspine.v1.IngestDocumentResult"][];
+            knowledgeAvailable?: boolean;
+            knowledgeError?: string;
+            retrieval?: components["schemas"]["candace.brainspine.v1.SearchResult"];
+            skippedPaths?: string[];
         };
         "candace.brainspine.v1.ListSimulationsResponse": {
             runs?: components["schemas"]["candace.brainspine.v1.SimulationRun"][];
@@ -1428,6 +1463,45 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["candace.brainspine.v1.IngestDocumentResponse"];
+                };
+            };
+            /** @description An unexpected error response. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["google.rpc.Status"];
+                };
+            };
+        };
+    };
+    Research_LearnAboutCSF: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    consumerPaths?: string[];
+                    /** @description Explicitly selected native Copilot CLI sessions. The host must opt in by
+                     *     configuring the read-only SDK bridge; an empty list performs no history read. */
+                    copilotSessionIds?: string[];
+                    retrievalQuery?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description A successful response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["candace.brainspine.v1.LearnAboutCSFResponse"];
                 };
             };
             /** @description An unexpected error response. */

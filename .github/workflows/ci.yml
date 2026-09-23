@@ -1,12 +1,14 @@
 name: CI
 
 # Everything this repository can prove about itself, without the monorepo it is
-# exported from. A snapshot arrives on a generated PR against main; these jobs
-# check that it is coherent before merge — the Bazel graph builds and its tests
+# exported from. In a public repository, these jobs check generated updates
+# before merge — the Bazel graph builds and its tests
 # pass, the plain `go` battery the README documents passes too (and it is the
 # only thing anywhere that runs the Go targets Bazel tags `manual`), the
 # deployment kit's hermetic suites pass, and no operator identifier came along
-# for the ride.
+# for the ride. Private staging is verified by the canonical repository's own
+# runners and exact-archive acceptance; every job below checks visibility before
+# allocating a GitHub-hosted runner.
 on:
   push:
     branches:
@@ -30,6 +32,7 @@ jobs:
     name: Operator identifiers
     # Cheapest job in the file and the one whose failure matters most, so it
     # runs on its own runner rather than behind a build.
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
 
@@ -48,6 +51,7 @@ jobs:
 
   csf_operator:
     name: Standalone CSF operator
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -75,6 +79,7 @@ jobs:
 
   bazel_inventory:
     name: Complete Bazel target inventory
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -91,6 +96,7 @@ jobs:
 
   bazel_runtime_base:
     name: Prepare Bazel runtime (${{ matrix.stage }})
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
@@ -109,6 +115,7 @@ jobs:
   bazel_runtime_network:
     name: Prepare Bazel Rust network dependencies
     needs: bazel_runtime_base
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -123,6 +130,7 @@ jobs:
   bazel_runtime_support:
     name: Prepare Bazel Rust storage and generator dependencies
     needs: bazel_runtime_network
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -137,6 +145,7 @@ jobs:
   bazel_runtime_rust:
     name: Prepare Bazel Rust libraries
     needs: bazel_runtime_support
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -151,6 +160,7 @@ jobs:
   bazel:
     name: Bazel build and test (${{ matrix.partition }})
     needs: [bazel_inventory, bazel_runtime_rust]
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
@@ -199,8 +209,37 @@ jobs:
             ${{ env.CANDACE_BAZEL_CACHE }}/home/sharedtaskcache/
           key: ${{ steps.bazel-cache.outputs.cache-primary-key }}
 
+  ocaml_repository:
+    name: Prepare pinned tooling and opam metadata
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/ocaml-toolchain
+        with:
+          mode: repository
+
+  ocaml_bytecode:
+    needs: ocaml_repository
+    name: Prepare the OCaml bytecode bootstrap
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/ocaml-toolchain
+        with:
+          mode: bytecode
+
   ocaml_compiler:
+    needs: ocaml_bytecode
     name: Prepare the pinned OCaml compiler
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -214,6 +253,7 @@ jobs:
   ocaml_toolchain:
     name: Prepare the locked OCaml libraries
     needs: ocaml_compiler
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -227,6 +267,7 @@ jobs:
   bazel_compiler:
     name: Bazel compiler build and test
     needs: [bazel_inventory, ocaml_toolchain]
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -246,6 +287,7 @@ jobs:
   bazel_metadata:
     name: Generated Bazel metadata drift
     needs: ocaml_toolchain
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -260,6 +302,7 @@ jobs:
 
   go_dependencies:
     name: Go dependencies and standard library
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
@@ -312,6 +355,7 @@ jobs:
     # sorted `go list ./...` inventory, so a new package or a manual Bazel
     # target cannot silently fall out of coverage. Build and vet cover that
     # complete inventory in their own jobs instead of consuming the test budget.
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     needs: go_dependencies
@@ -429,6 +473,7 @@ jobs:
     # they say the same thing here that they say in the monorepo. The suites
     # that need a live stack or a model provider stay in the monorepo, where the
     # credentials and the GPU are.
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
 
@@ -458,8 +503,51 @@ jobs:
       - name: Fleet
         run: ./candaceos/test-fleet.sh
 
+  public_contracts:
+    name: Public contract generation (${{ matrix.component }})
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: shared-proto
+            script: proto/generate.sh
+          - component: adapter-openapi
+            script: services/copilot-adapter/generate.sh
+          - component: adapter-store
+            script: services/copilot-adapter/store/generate.sh
+          - component: adapter-config
+            script: services/copilot-adapter/proto/generate.sh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Regenerate and compare the complete projection
+        env:
+          GENERATOR: ${{ matrix.script }}
+        run: bash "$GENERATOR" check
+
+  csf_contracts:
+    name: CSF API contract generation
+    needs: ocaml_toolchain
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/ocaml-toolchain
+        with:
+          mode: restore
+      - name: Regenerate and compare every CSF API projection
+        run: bash csf/tools/codegen/generate.sh check
+
   csf_workbench:
-    name: CSF contracts and Workbench UI
+    name: Workbench browser generation, tests and build
+    if: ${{ github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -467,13 +555,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Check public contract generation
-        run: |
-          bash proto/generate.sh check
-          bash csf/tools/codegen/generate.sh check
-          bash services/copilot-adapter/generate.sh check
-          bash services/copilot-adapter/store/generate.sh check
-          bash services/copilot-adapter/proto/generate.sh check
       - name: Test and build the Workbench from public source only
         run: |
           docker run --rm --user "$(id -u):$(id -g)" \

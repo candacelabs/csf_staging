@@ -5690,7 +5690,7 @@
     },
     "@@tools_opam+//extensions:opam.bzl%opam": {
       "general": {
-        "bzlTransitiveDigest": "LxWXo+W13kHnwEI1Lx/pgNGCLeZMRpmuufmGZJ/Bi5U=",
+        "bzlTransitiveDigest": "cgjXcxEDxFwlK8wGK6LZ7lwlo39T/Tjjvl4U090/q2s=",
         "usagesDigest": "O/ahYy9H+J2j+9Ipq8X75ZAlM6I1aHFtORcy4N1pZtc=",
         "recordedInputs": [
           "REPO_MAPPING:tools_opam+,bazel_skylib bazel_skylib+",
@@ -5699,10 +5699,32 @@
           "ENV:OBAZL_OPAM_ENV \\0"
         ],
         "generatedRepoSpecs": {
+          "opam.repository": {
+            "repoRuleId": "@@tools_opam+//extensions:opam.bzl%opam_repository",
+            "attributes": {
+              "opam_version": "2.3.0",
+              "ocaml_version": "5.3.0",
+              "debug": 0,
+              "opam_verbosity": 0,
+              "verbosity": 0
+            }
+          },
+          "opam.bytecode": {
+            "repoRuleId": "@@tools_opam+//extensions:opam.bzl%opam_bytecode",
+            "attributes": {
+              "repository": "@@tools_opam++opam+opam.repository//:repository.json",
+              "opam_version": "2.3.0",
+              "ocaml_version": "5.3.0",
+              "debug": 0,
+              "opam_verbosity": 0,
+              "verbosity": 0
+            }
+          },
           "opam.compiler": {
             "repoRuleId": "@@tools_opam+//extensions:opam.bzl%opam_compiler",
             "attributes": {
               "opam_version": "2.3.0",
+              "repository": "@@tools_opam++opam+opam.bytecode//:bytecode.json",
               "ocaml_version": "5.3.0",
               "locked_versions": {
                 "base": "v0.17.3",
@@ -5760,8 +5782,8 @@
               "verbosity": 0
             }
           },
-          "opam.bootstrap": {
-            "repoRuleId": "@@tools_opam+//extensions:opam.bzl%opam_bootstrap",
+          "opam.packages": {
+            "repoRuleId": "@@tools_opam+//extensions:opam.bzl%opam_packages",
             "attributes": {
               "opam_version": "2.3.0",
               "compiler": "@@tools_opam++opam+opam.compiler//:compiler.json",
@@ -5915,10 +5937,18 @@
               "verbosity": 0
             }
           },
+          "opam.bootstrap": {
+            "repoRuleId": "@@tools_opam+//extensions:opam.bzl%opam_bootstrap",
+            "attributes": {
+              "packages": "@@tools_opam++opam+opam.packages//:packages.json",
+              "debug": 0,
+              "verbosity": 0
+            }
+          },
           "opam.lock": {
             "repoRuleId": "@@tools_opam+//extensions:opam.bzl%opam_lock",
             "attributes": {
-              "source": "@@tools_opam++opam+opam.bootstrap//:opam.lock.json"
+              "source": "@@tools_opam++opam+opam.packages//:opam.lock.json"
             }
           },
           "opam.base": {
@@ -6432,6 +6462,8 @@
             "opam.ocamlsdk",
             "opam.lock",
             "opam.compiler",
+            "opam.repository",
+            "opam.bytecode",
             "opam.cmdliner",
             "opam.sha",
             "opam.yojson",

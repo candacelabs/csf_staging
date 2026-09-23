@@ -1,21 +1,26 @@
 # Destination CI
 
-These workflows run in **`candacelabs/csf_staging`**, the private staging
-repository this tree is exported to. They ship with the snapshot: the export
-declaration in the
-monorepo's `Candacefile` sets `requires_workflows_write: true` precisely so the
+These workflows ship with every generated snapshot and run on GitHub-hosted
+runners when the destination repository is public. Every job checks repository
+visibility before allocating a runner. Private staging uses the canonical
+repository's own runner fleet, source checks, exact snapshot comparison and
+archive-consumer acceptance. Skipped staging workflows are not test results.
+The monorepo's `Candacefile` sets `requires_workflows_write: true` so the
 publisher may write this directory.
 
-The `csf_workbench` job also verifies public contract projections and builds/tests
-the Workbench browser assets using only this repository.
+Public contract projections run in separate five-minute jobs. The CSF API
+generator requires the prepared OCaml installation; `csf_workbench` independently
+verifies browser generation, tests and the production build using only this
+repository.
 
 ## They do not run where they are written
 
 In the monorepo this file lives at `candace/.github/workflows/`, and GitHub only
 reads workflows from a repository's own root `.github/workflows/`. So these are
 inert there — by construction, not by an `if:` guard that someone could delete.
-The path that makes them live is the export itself: `candace/` becomes the
-repository root, and `candace/.github/` becomes `.github/`.
+The export places them at the workflow root: `candace/` becomes the repository
+root, and `candace/.github/` becomes `.github/`. Their visibility guards keep
+hosted jobs inactive in a private destination.
 
 The monorepo has its own gates over the same content, and those are the ones a
 change to this tree must satisfy before it can ever reach here:
@@ -31,9 +36,9 @@ change to this tree must satisfy before it can ever reach here:
 ## What they are for
 
 The destination is generated: the monorepo is canonical, and a hand-written
-destination commit blocks the exporter on divergence. These jobs gate the
-generated snapshot PR before it is merged into `main`. They check whether the
-snapshot is coherent on its own. A snapshot can be green in the monorepo and still be
+destination commit blocks the exporter on divergence. In the public repository,
+these jobs gate the generated snapshot PR before it is merged into `main`. They
+check whether the snapshot is coherent on its own. A snapshot can be green in the monorepo and still be
 broken here, because here it is a repository rather than a subdirectory: the
 module root moves, `candaceos/` sits at the top level, and consumers take this
 tree as a Bazel module. Every job here asks that question and nothing else:
@@ -52,8 +57,9 @@ this repository publishes a website any more.
 
 ## Conventions
 
-- **GitHub-hosted `ubuntu-24.04` runners.** The monorepo's workflows target a
-  self-hosted fleet that does not exist here.
+- **GitHub-hosted `ubuntu-24.04` runners for public updates.** Private staging
+  allocates no hosted runners. These portable workflows never require the
+  canonical repository's private fleet.
 - **Least privilege.** The workflow default is `contents: read`, and no job
   asks for more. The export declaration still sets `requires_workflows_write`,
   because that is the publisher's permission to write this directory, not a
@@ -84,7 +90,9 @@ this repository publishes a website any more.
 
 ## Operator prerequisites
 
-None. Every job runs on a GitHub-hosted runner from a `contents: read` checkout
-and needs nothing configured in the destination's settings. The one prerequisite
+For a public destination, every job runs on a GitHub-hosted runner from a
+`contents: read` checkout and needs no private runner or application credential.
+Repository visibility is an operator-controlled publication decision; these
+workflows never change it. The one prerequisite
 that used to live here — Pages source, custom domain, DNS — retired with
 `pages.yml` on 2026-08-27.

@@ -1,10 +1,11 @@
-[local clone paths genericized for publication - citations unmodified]
+[Publication edit: the original local clone path was removed; citations below
+refer to the pinned upstream source revision.]
 
 # Dossier: xet-core configuration, env vars, versioning, and self-hosting affordances
 
-Repo: huggingface/xet-core @ `77fc84d3d` (2026-08-11).
-Root path (call it `$XC` below; every cite is `$XC/<relpath>:<line>`):
-`/tmp/xet-research/scratchpad/xet-core`
+Repo: [huggingface/xet-core @ `77fc84d3d077973dade91a216da5e6b4a1595ca0`](https://github.com/huggingface/xet-core/tree/77fc84d3d077973dade91a216da5e6b4a1595ca0), dated 2026-08-11.
+Root path (call it `$XC` below; every cite is `$XC/<relpath>:<line>`): the
+repository root at that pinned revision.
 
 ---
 

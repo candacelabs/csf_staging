@@ -1,10 +1,9 @@
-[local clone paths genericized for publication - citations unmodified]
-
-All source read. Compiling the dossier now.
+[Publication edit: the original local clone path and authoring notes were
+removed; citations below refer to the pinned upstream source revision.]
 
 # git_xet Dossier — the Git integration of xet-core
 
-Repo: huggingface/xet-core @ 77fc84d3d (2026-08-11), local clone base `/tmp/xet-research/scratchpad/xet-core/`. All citations below are relative to that base. Crate: `git_xet`, package name `git_xet`, binary `git-xet`, version `0.2.1` (`git_xet/Cargo.toml:2-9`).
+Repo: [huggingface/xet-core @ `77fc84d3d077973dade91a216da5e6b4a1595ca0`](https://github.com/huggingface/xet-core/tree/77fc84d3d077973dade91a216da5e6b4a1595ca0), dated 2026-08-11. All citations below are relative to that repository root. Crate: `git_xet`, package name `git_xet`, binary `git-xet`, version `0.2.1` (`git_xet/Cargo.toml:2-9`).
 
 ## 0. Architecture TL;DR (read this first)
 

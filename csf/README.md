@@ -13,7 +13,7 @@ examples shipped with it. The public Go import is
 module or claim backward compatibility for earlier experimental CSF interfaces.
 
 [Try the library](#try-the-library) · [Workbench](#run-the-workbench) ·
-[Add your code](EXTENDING.md) · [Agent instructions](AGENTS.md) ·
+[Agent-native onboarding](#agent-native-onboarding) · [Add your code](EXTENDING.md) · [Agent instructions](AGENTS.md) ·
 [Examples](#examples-and-boundaries) · [Terms](docs/generated/ontology_cgen.md)
 
 | Work | Knowledge | Evidence |
@@ -22,6 +22,64 @@ module or claim backward compatibility for earlier experimental CSF interfaces.
 
 The brain proposes. The spine executes admitted behavior. CSF supplies the
 contracts and coordination that let each experiment inform the next decision.
+
+## Agent-native onboarding
+
+CSF is intended to be **agent-native**. Alongside human-readable READMEs,
+it exposes an MCP server. The goal is a **self-changeable MCP surface** that
+an agent can learn, configure and extend for the consumer repository.
+
+The intended first instruction to your agent is **“Learn about CSF.”** The
+`LearnAboutCSF` operation explains the pinned version's capabilities and
+extension points and submits the embedded guidance plus selected consumer
+files to the configured knowledge capability. Its first call needs no arguments.
+Set `CSF_CONSUMER_ROOT` to authorize a checkout, then select relative source
+paths in batches of up to 64. The response carries durable ingestion receipts
+with revisions and content hashes; queued receipts become searchable when the
+existing projection workers finish. Repeating the call is idempotent and
+retrieves matching indexed sources. Without knowledge configuration, the tool
+still explains CSF and reports that indexing is unavailable. See the
+[configuration contract](docs/configuration.md); library hosts use
+`WithOnboarding` for the same source authorization.
+
+Copilot CLI history is an explicit opt-in source. Set
+`CSF_COPILOT_HISTORY_SOURCE` to a native history directory that the host is
+authorized to read; startup copies that directory into a disposable SDK home,
+and the live source is never opened by onboarding. Select at most 16 session
+IDs with `copilot_session_ids` in `LearnAboutCSF`. An empty first call does not
+read history. When the source is configured, the same MCP server exposes
+`ListCopilotHistorySessions`; list IDs there, then pass selected IDs to
+onboarding. Library hosts can call the bridge's typed `ListHistorySessions`
+method directly. Each retained document is a
+decoded SDK snapshot containing metadata and events. Its receipt is queued
+until projection workers index it, and only then can retrieval return it.
+The SDK transport fixture verifies resume, typed event reads and disconnect.
+Native acceptance with Copilot CLI 1.0.85 and SDK 1.0.11 also reads a persisted
+synthetic conversation without changing its source or making another model
+request. Real PostgreSQL/OpenSearch acceptance verifies retained history reaches
+the lexical search index. User history is not part of those fixtures.
+It guides the agent through this workflow:
+
+1. Inspect the consumer repository and identify tooling CSF can take over.
+2. Adopt CSF through its Bazel dependency, required environment settings and
+   optional capabilities, keeping consumer integration code minimal.
+3. Extend that same MCP server with the consumer's own tools: define their
+   contracts, implement their behavior and expose them alongside CSF's tools.
+4. Discover and call the resulting tools, run the consumer's checks and retain
+   evidence that the integration works.
+
+The aim is broad, mostly implicit dependence on CSF: it handles more underneath
+the consumer, and improvements arrive through CSF upgrades with minimal changes
+to consumer code. The agent can continue adapting its integration and adding
+tools as the repository's needs change.
+
+**Current status:** the MCP server,
+[agent configuration tools](docs/standalone_onboarding.md#agent-configuration),
+typed consumer registration (`WithMCPTool[In, Out]`) and the onboarding
+operation exist. Consumer registration uses the pinned MCP SDK to derive and
+validate schemas, and rejects name collisions with CSF operations. The host
+still owns listener startup, authentication, repository authorization and
+consumer checks.
 
 ## Why Go: the IPC problem within CPU 0 housekeeping
 

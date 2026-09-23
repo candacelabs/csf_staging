@@ -14,6 +14,6 @@ repository_root=$(git -C "$module_root" rev-parse --show-toplevel)
     printf 'owning-module\0'
     git -C "$repository_root" ls-files --stage -z -- \
       MODULE.bazel MODULE.bazel.lock .bazelrc .bazelversion .gitattributes \
-      deploy/home/opam.lock.json ':(glob)third_party/tools_opam/**' ':(glob)third_party/rules_ocaml/**'
+      deploy/home/opam.lock.json
   fi
 } | sha256sum | cut -d ' ' -f 1

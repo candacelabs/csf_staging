@@ -1,12 +1,11 @@
-[local clone paths genericized for publication - citations unmodified]
-
-All research complete. Below is the dossier — my final deliverable.
+[Publication edit: the original local clone path was removed; citations below
+refer to the pinned upstream source revision.]
 
 ---
 
 # Xet CAS HTTP Wire Contract — Implementation Dossier
 
-**Source tree root** (all paths below are relative to it): `/tmp/xet-research/scratchpad/xet-core` (huggingface/xet-core @ 77fc84d3d, 2026-08-11).
+**Source tree root** (all paths below are relative to it): [huggingface/xet-core @ `77fc84d3d077973dade91a216da5e6b4a1595ca0`](https://github.com/huggingface/xet-core/tree/77fc84d3d077973dade91a216da5e6b4a1595ca0), dated 2026-08-11.
 
 Primary sources: `openapi/cas.openapi.yaml` (499 lines, OpenAPI 3.1.0, title "Xet CAS API", version 1.0.0), `openapi/Makefile` (client codegen only — `openapi-generator-cli` for rust/typescript/python/java/go; no server stubs, no wire facts beyond the spec itself), and the real client in `xet_client/`.
 

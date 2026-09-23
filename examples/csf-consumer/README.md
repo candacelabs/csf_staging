@@ -85,4 +85,23 @@ labels used by this host are `@csf//csf`, `@csf//pkg/httpserver`, and
 [external-consumer guide](../external-consumer/README.md) explains dependency
 mapping and the complete `archive_override` consumer setup.
 
+The canonical monorepo's external-consumer acceptance harness also has an opt-in `csf-consumer`
+mode. It creates a fresh Bazel module whose only target is an alias to the
+CSF-owned `@csf//app/csf/cmd:cmd` binary, then configures that binary through
+`CSF_LISTEN`, `CSF_WORKBENCH_THEME_DIR` and `CSF_AGENT_MCP_KEY_FILE`:
+
+```sh
+bash tools/test_candace_external_consumer.sh HEAD csf-consumer
+```
+
+Set `CANDACE_EXPECT_ENV_CONFIGURATION=true` for release acceptance. The mode
+requests the snapshot and Workbench theme operations, checks that a
+raw agent MCP signing key is rejected, sends `SIGTERM`, and verifies that the
+listener closes. It uses synthetic theme and key files only; it does not claim
+provider delivery or deploy a service. Without that setting it also accepts an
+older CSF revision, recording whether the same consumer's environment was
+adopted so that an upgrade can be compared without changing consumer code.
+The `all` mode continues to run the
+existing Go, `archive_override` and `http_archive` consumers.
+
 [EXTENDING](../../csf/EXTENDING.md) walks through the composition seam.

@@ -18,6 +18,14 @@ for help. `candace csf up` builds the pinned runtime image and starts CSF and
 its required containers. Use `candace csf status`, `candace csf logs` and
 `candace csf down` to manage the same app. `down` keeps its persistent data.
 
+For a consumer that already owns a Bazel workspace, the archive also provides
+the same application as `@csf//app/csf/cmd:cmd`. Run it with `serve` and set
+the `CSF_*` startup environment described in
+[the configuration contract](configuration.md); explicit flags override those
+environment defaults. The minimal runtime needs no database or provider, and
+knowledge remains unavailable until PostgreSQL, OpenSearch and the existing
+ingestion operations are explicitly configured.
+
 The runtime state root is `~/.local/state/csf`; set
 `CANDACE_CSF_STATE_DIR` to move it. Private operator configuration stays in
 this directory. Evidence is written to `<state>/evidence`; Workbench

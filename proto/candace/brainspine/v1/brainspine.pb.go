@@ -2662,6 +2662,234 @@ func (x *IngestDocumentResponse) GetResult() *IngestDocumentResult {
 	return nil
 }
 
+// LearnAboutCSF returns the shipped onboarding guidance and indexes the
+// explicitly selected CSF and consumer source files through the knowledge
+// capability. The host configures both roots and their revisions; callers only
+// select relative consumer files after inspecting the authorized checkout.
+type LearnAboutCSFRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ConsumerPaths  []string               `protobuf:"bytes,1,rep,name=consumer_paths,json=consumerPaths,proto3" json:"consumer_paths,omitempty"`
+	RetrievalQuery string                 `protobuf:"bytes,2,opt,name=retrieval_query,json=retrievalQuery,proto3" json:"retrieval_query,omitempty"`
+	// Explicitly selected native Copilot CLI sessions. The host must opt in by
+	// configuring the read-only SDK bridge; an empty list performs no history read.
+	CopilotSessionIds []string `protobuf:"bytes,3,rep,name=copilot_session_ids,json=copilotSessionIds,proto3" json:"copilot_session_ids,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *LearnAboutCSFRequest) Reset() {
+	*x = LearnAboutCSFRequest{}
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LearnAboutCSFRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LearnAboutCSFRequest) ProtoMessage() {}
+
+func (x *LearnAboutCSFRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LearnAboutCSFRequest.ProtoReflect.Descriptor instead.
+func (*LearnAboutCSFRequest) Descriptor() ([]byte, []int) {
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *LearnAboutCSFRequest) GetConsumerPaths() []string {
+	if x != nil {
+		return x.ConsumerPaths
+	}
+	return nil
+}
+
+func (x *LearnAboutCSFRequest) GetRetrievalQuery() string {
+	if x != nil {
+		return x.RetrievalQuery
+	}
+	return ""
+}
+
+func (x *LearnAboutCSFRequest) GetCopilotSessionIds() []string {
+	if x != nil {
+		return x.CopilotSessionIds
+	}
+	return nil
+}
+
+type LearnAboutCSFResponse struct {
+	state              protoimpl.MessageState  `protogen:"open.v1"`
+	GuidanceMarkdown   string                  `protobuf:"bytes,1,opt,name=guidance_markdown,json=guidanceMarkdown,proto3" json:"guidance_markdown,omitempty"`
+	KnowledgeAvailable bool                    `protobuf:"varint,2,opt,name=knowledge_available,json=knowledgeAvailable,proto3" json:"knowledge_available,omitempty"`
+	KnowledgeError     string                  `protobuf:"bytes,3,opt,name=knowledge_error,json=knowledgeError,proto3" json:"knowledge_error,omitempty"`
+	Ingested           []*IngestDocumentResult `protobuf:"bytes,4,rep,name=ingested,proto3" json:"ingested,omitempty"`
+	SkippedPaths       []string                `protobuf:"bytes,5,rep,name=skipped_paths,json=skippedPaths,proto3" json:"skipped_paths,omitempty"`
+	Retrieval          *SearchResult           `protobuf:"bytes,6,opt,name=retrieval,proto3" json:"retrieval,omitempty"`
+	CopilotHistory     []*CopilotHistoryResult `protobuf:"bytes,7,rep,name=copilot_history,json=copilotHistory,proto3" json:"copilot_history,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *LearnAboutCSFResponse) Reset() {
+	*x = LearnAboutCSFResponse{}
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LearnAboutCSFResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LearnAboutCSFResponse) ProtoMessage() {}
+
+func (x *LearnAboutCSFResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LearnAboutCSFResponse.ProtoReflect.Descriptor instead.
+func (*LearnAboutCSFResponse) Descriptor() ([]byte, []int) {
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *LearnAboutCSFResponse) GetGuidanceMarkdown() string {
+	if x != nil {
+		return x.GuidanceMarkdown
+	}
+	return ""
+}
+
+func (x *LearnAboutCSFResponse) GetKnowledgeAvailable() bool {
+	if x != nil {
+		return x.KnowledgeAvailable
+	}
+	return false
+}
+
+func (x *LearnAboutCSFResponse) GetKnowledgeError() string {
+	if x != nil {
+		return x.KnowledgeError
+	}
+	return ""
+}
+
+func (x *LearnAboutCSFResponse) GetIngested() []*IngestDocumentResult {
+	if x != nil {
+		return x.Ingested
+	}
+	return nil
+}
+
+func (x *LearnAboutCSFResponse) GetSkippedPaths() []string {
+	if x != nil {
+		return x.SkippedPaths
+	}
+	return nil
+}
+
+func (x *LearnAboutCSFResponse) GetRetrieval() *SearchResult {
+	if x != nil {
+		return x.Retrieval
+	}
+	return nil
+}
+
+func (x *LearnAboutCSFResponse) GetCopilotHistory() []*CopilotHistoryResult {
+	if x != nil {
+		return x.CopilotHistory
+	}
+	return nil
+}
+
+// CopilotHistoryResult records one typed native session projection. The
+// embedded ingestion receipt remains the durable queue and provenance result.
+type CopilotHistoryResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	EventCount    uint64                 `protobuf:"varint,2,opt,name=event_count,json=eventCount,proto3" json:"event_count,omitempty"`
+	Ingest        *IngestDocumentResult  `protobuf:"bytes,3,opt,name=ingest,proto3" json:"ingest,omitempty"`
+	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CopilotHistoryResult) Reset() {
+	*x = CopilotHistoryResult{}
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CopilotHistoryResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CopilotHistoryResult) ProtoMessage() {}
+
+func (x *CopilotHistoryResult) ProtoReflect() protoreflect.Message {
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CopilotHistoryResult.ProtoReflect.Descriptor instead.
+func (*CopilotHistoryResult) Descriptor() ([]byte, []int) {
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *CopilotHistoryResult) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *CopilotHistoryResult) GetEventCount() uint64 {
+	if x != nil {
+		return x.EventCount
+	}
+	return 0
+}
+
+func (x *CopilotHistoryResult) GetIngest() *IngestDocumentResult {
+	if x != nil {
+		return x.Ingest
+	}
+	return nil
+}
+
+func (x *CopilotHistoryResult) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 type ProjectionTask struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Document        *DocumentRequest       `protobuf:"bytes,1,opt,name=document,proto3" json:"document,omitempty"`
@@ -2675,7 +2903,7 @@ type ProjectionTask struct {
 
 func (x *ProjectionTask) Reset() {
 	*x = ProjectionTask{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[27]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2687,7 +2915,7 @@ func (x *ProjectionTask) String() string {
 func (*ProjectionTask) ProtoMessage() {}
 
 func (x *ProjectionTask) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[27]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2700,7 +2928,7 @@ func (x *ProjectionTask) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectionTask.ProtoReflect.Descriptor instead.
 func (*ProjectionTask) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{27}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ProjectionTask) GetDocument() *DocumentRequest {
@@ -2748,7 +2976,7 @@ type ProjectionCount struct {
 
 func (x *ProjectionCount) Reset() {
 	*x = ProjectionCount{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[28]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2760,7 +2988,7 @@ func (x *ProjectionCount) String() string {
 func (*ProjectionCount) ProtoMessage() {}
 
 func (x *ProjectionCount) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[28]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2773,7 +3001,7 @@ func (x *ProjectionCount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectionCount.ProtoReflect.Descriptor instead.
 func (*ProjectionCount) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{28}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ProjectionCount) GetState() ProjectionState {
@@ -2800,7 +3028,7 @@ type DocumentRequest struct {
 
 func (x *DocumentRequest) Reset() {
 	*x = DocumentRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[29]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2812,7 +3040,7 @@ func (x *DocumentRequest) String() string {
 func (*DocumentRequest) ProtoMessage() {}
 
 func (x *DocumentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[29]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2825,7 +3053,7 @@ func (x *DocumentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DocumentRequest.ProtoReflect.Descriptor instead.
 func (*DocumentRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{29}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *DocumentRequest) GetSourceId() string {
@@ -2853,7 +3081,7 @@ type DocumentResult struct {
 
 func (x *DocumentResult) Reset() {
 	*x = DocumentResult{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[30]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2865,7 +3093,7 @@ func (x *DocumentResult) String() string {
 func (*DocumentResult) ProtoMessage() {}
 
 func (x *DocumentResult) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[30]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2878,7 +3106,7 @@ func (x *DocumentResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DocumentResult.ProtoReflect.Descriptor instead.
 func (*DocumentResult) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{30}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *DocumentResult) GetDocument() *SourceDocument {
@@ -2911,7 +3139,7 @@ type GetDocumentRequest struct {
 
 func (x *GetDocumentRequest) Reset() {
 	*x = GetDocumentRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[31]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2923,7 +3151,7 @@ func (x *GetDocumentRequest) String() string {
 func (*GetDocumentRequest) ProtoMessage() {}
 
 func (x *GetDocumentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[31]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2936,7 +3164,7 @@ func (x *GetDocumentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDocumentRequest.ProtoReflect.Descriptor instead.
 func (*GetDocumentRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{31}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *GetDocumentRequest) GetRequest() *DocumentRequest {
@@ -2955,7 +3183,7 @@ type GetDocumentResponse struct {
 
 func (x *GetDocumentResponse) Reset() {
 	*x = GetDocumentResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[32]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2967,7 +3195,7 @@ func (x *GetDocumentResponse) String() string {
 func (*GetDocumentResponse) ProtoMessage() {}
 
 func (x *GetDocumentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[32]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2980,7 +3208,7 @@ func (x *GetDocumentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDocumentResponse.ProtoReflect.Descriptor instead.
 func (*GetDocumentResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{32}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *GetDocumentResponse) GetResult() *DocumentResult {
@@ -3000,7 +3228,7 @@ type SearchRequest struct {
 
 func (x *SearchRequest) Reset() {
 	*x = SearchRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[33]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3012,7 +3240,7 @@ func (x *SearchRequest) String() string {
 func (*SearchRequest) ProtoMessage() {}
 
 func (x *SearchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[33]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3025,7 +3253,7 @@ func (x *SearchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchRequest.ProtoReflect.Descriptor instead.
 func (*SearchRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{33}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *SearchRequest) GetQuery() string {
@@ -3053,7 +3281,7 @@ type SearchHit struct {
 
 func (x *SearchHit) Reset() {
 	*x = SearchHit{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[34]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3065,7 +3293,7 @@ func (x *SearchHit) String() string {
 func (*SearchHit) ProtoMessage() {}
 
 func (x *SearchHit) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[34]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3078,7 +3306,7 @@ func (x *SearchHit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchHit.ProtoReflect.Descriptor instead.
 func (*SearchHit) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{34}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SearchHit) GetDocument() *SourceDocument {
@@ -3113,7 +3341,7 @@ type SearchResult struct {
 
 func (x *SearchResult) Reset() {
 	*x = SearchResult{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[35]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3125,7 +3353,7 @@ func (x *SearchResult) String() string {
 func (*SearchResult) ProtoMessage() {}
 
 func (x *SearchResult) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[35]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3138,7 +3366,7 @@ func (x *SearchResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchResult.ProtoReflect.Descriptor instead.
 func (*SearchResult) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{35}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *SearchResult) GetHits() []*SearchHit {
@@ -3171,7 +3399,7 @@ type SearchResponse struct {
 
 func (x *SearchResponse) Reset() {
 	*x = SearchResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[36]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3183,7 +3411,7 @@ func (x *SearchResponse) String() string {
 func (*SearchResponse) ProtoMessage() {}
 
 func (x *SearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[36]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3196,7 +3424,7 @@ func (x *SearchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchResponse.ProtoReflect.Descriptor instead.
 func (*SearchResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{36}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SearchResponse) GetResult() *SearchResult {
@@ -3230,7 +3458,7 @@ type KnowledgeNode struct {
 
 func (x *KnowledgeNode) Reset() {
 	*x = KnowledgeNode{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[37]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3242,7 +3470,7 @@ func (x *KnowledgeNode) String() string {
 func (*KnowledgeNode) ProtoMessage() {}
 
 func (x *KnowledgeNode) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[37]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3255,7 +3483,7 @@ func (x *KnowledgeNode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KnowledgeNode.ProtoReflect.Descriptor instead.
 func (*KnowledgeNode) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{37}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *KnowledgeNode) GetNodeId() string {
@@ -3379,7 +3607,7 @@ type PutNodeRequest struct {
 
 func (x *PutNodeRequest) Reset() {
 	*x = PutNodeRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[38]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3391,7 +3619,7 @@ func (x *PutNodeRequest) String() string {
 func (*PutNodeRequest) ProtoMessage() {}
 
 func (x *PutNodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[38]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3404,7 +3632,7 @@ func (x *PutNodeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutNodeRequest.ProtoReflect.Descriptor instead.
 func (*PutNodeRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{38}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *PutNodeRequest) GetNode() *KnowledgeNode {
@@ -3423,7 +3651,7 @@ type PutNodeResponse struct {
 
 func (x *PutNodeResponse) Reset() {
 	*x = PutNodeResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[39]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3435,7 +3663,7 @@ func (x *PutNodeResponse) String() string {
 func (*PutNodeResponse) ProtoMessage() {}
 
 func (x *PutNodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[39]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3448,7 +3676,7 @@ func (x *PutNodeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutNodeResponse.ProtoReflect.Descriptor instead.
 func (*PutNodeResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{39}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *PutNodeResponse) GetNode() *KnowledgeNode {
@@ -3472,7 +3700,7 @@ type KnowledgeEdge struct {
 
 func (x *KnowledgeEdge) Reset() {
 	*x = KnowledgeEdge{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[40]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3484,7 +3712,7 @@ func (x *KnowledgeEdge) String() string {
 func (*KnowledgeEdge) ProtoMessage() {}
 
 func (x *KnowledgeEdge) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[40]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3497,7 +3725,7 @@ func (x *KnowledgeEdge) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KnowledgeEdge.ProtoReflect.Descriptor instead.
 func (*KnowledgeEdge) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{40}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *KnowledgeEdge) GetFromNodeId() string {
@@ -3551,7 +3779,7 @@ type PutEdgeRequest struct {
 
 func (x *PutEdgeRequest) Reset() {
 	*x = PutEdgeRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[41]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3563,7 +3791,7 @@ func (x *PutEdgeRequest) String() string {
 func (*PutEdgeRequest) ProtoMessage() {}
 
 func (x *PutEdgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[41]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3576,7 +3804,7 @@ func (x *PutEdgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutEdgeRequest.ProtoReflect.Descriptor instead.
 func (*PutEdgeRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{41}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *PutEdgeRequest) GetEdge() *KnowledgeEdge {
@@ -3595,7 +3823,7 @@ type PutEdgeResponse struct {
 
 func (x *PutEdgeResponse) Reset() {
 	*x = PutEdgeResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[42]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3607,7 +3835,7 @@ func (x *PutEdgeResponse) String() string {
 func (*PutEdgeResponse) ProtoMessage() {}
 
 func (x *PutEdgeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[42]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3620,7 +3848,7 @@ func (x *PutEdgeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutEdgeResponse.ProtoReflect.Descriptor instead.
 func (*PutEdgeResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{42}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *PutEdgeResponse) GetEdge() *KnowledgeEdge {
@@ -3640,7 +3868,7 @@ type GraphRequest struct {
 
 func (x *GraphRequest) Reset() {
 	*x = GraphRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[43]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3652,7 +3880,7 @@ func (x *GraphRequest) String() string {
 func (*GraphRequest) ProtoMessage() {}
 
 func (x *GraphRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[43]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3665,7 +3893,7 @@ func (x *GraphRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphRequest.ProtoReflect.Descriptor instead.
 func (*GraphRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{43}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *GraphRequest) GetRootId() string {
@@ -3693,7 +3921,7 @@ type GraphSnapshot struct {
 
 func (x *GraphSnapshot) Reset() {
 	*x = GraphSnapshot{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[44]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3705,7 +3933,7 @@ func (x *GraphSnapshot) String() string {
 func (*GraphSnapshot) ProtoMessage() {}
 
 func (x *GraphSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[44]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3718,7 +3946,7 @@ func (x *GraphSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphSnapshot.ProtoReflect.Descriptor instead.
 func (*GraphSnapshot) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{44}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *GraphSnapshot) GetNodes() []*KnowledgeNode {
@@ -3751,7 +3979,7 @@ type GetGraphRequest struct {
 
 func (x *GetGraphRequest) Reset() {
 	*x = GetGraphRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[45]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3763,7 +3991,7 @@ func (x *GetGraphRequest) String() string {
 func (*GetGraphRequest) ProtoMessage() {}
 
 func (x *GetGraphRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[45]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3776,7 +4004,7 @@ func (x *GetGraphRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGraphRequest.ProtoReflect.Descriptor instead.
 func (*GetGraphRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{45}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetGraphRequest) GetRequest() *GraphRequest {
@@ -3795,7 +4023,7 @@ type GetGraphResponse struct {
 
 func (x *GetGraphResponse) Reset() {
 	*x = GetGraphResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[46]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3807,7 +4035,7 @@ func (x *GetGraphResponse) String() string {
 func (*GetGraphResponse) ProtoMessage() {}
 
 func (x *GetGraphResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[46]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3820,7 +4048,7 @@ func (x *GetGraphResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGraphResponse.ProtoReflect.Descriptor instead.
 func (*GetGraphResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{46}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetGraphResponse) GetSnapshot() *GraphSnapshot {
@@ -3867,7 +4095,7 @@ type SimulationRun struct {
 
 func (x *SimulationRun) Reset() {
 	*x = SimulationRun{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[47]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3879,7 +4107,7 @@ func (x *SimulationRun) String() string {
 func (*SimulationRun) ProtoMessage() {}
 
 func (x *SimulationRun) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[47]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3892,7 +4120,7 @@ func (x *SimulationRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationRun.ProtoReflect.Descriptor instead.
 func (*SimulationRun) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{47}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *SimulationRun) GetRunId() string {
@@ -4097,7 +4325,7 @@ type SimulationArtifact struct {
 
 func (x *SimulationArtifact) Reset() {
 	*x = SimulationArtifact{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[48]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4109,7 +4337,7 @@ func (x *SimulationArtifact) String() string {
 func (*SimulationArtifact) ProtoMessage() {}
 
 func (x *SimulationArtifact) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[48]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4122,7 +4350,7 @@ func (x *SimulationArtifact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationArtifact.ProtoReflect.Descriptor instead.
 func (*SimulationArtifact) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{48}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *SimulationArtifact) GetPath() string {
@@ -4178,7 +4406,7 @@ type SimulationFrame struct {
 
 func (x *SimulationFrame) Reset() {
 	*x = SimulationFrame{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[49]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4190,7 +4418,7 @@ func (x *SimulationFrame) String() string {
 func (*SimulationFrame) ProtoMessage() {}
 
 func (x *SimulationFrame) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[49]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4203,7 +4431,7 @@ func (x *SimulationFrame) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationFrame.ProtoReflect.Descriptor instead.
 func (*SimulationFrame) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{49}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *SimulationFrame) GetStep() uint32 {
@@ -4279,7 +4507,7 @@ type SimulationFrameDimensions struct {
 
 func (x *SimulationFrameDimensions) Reset() {
 	*x = SimulationFrameDimensions{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[50]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4291,7 +4519,7 @@ func (x *SimulationFrameDimensions) String() string {
 func (*SimulationFrameDimensions) ProtoMessage() {}
 
 func (x *SimulationFrameDimensions) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[50]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4304,7 +4532,7 @@ func (x *SimulationFrameDimensions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationFrameDimensions.ProtoReflect.Descriptor instead.
 func (*SimulationFrameDimensions) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{50}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *SimulationFrameDimensions) GetWidth() uint32 {
@@ -4331,7 +4559,7 @@ type SimulationFrameClocks struct {
 
 func (x *SimulationFrameClocks) Reset() {
 	*x = SimulationFrameClocks{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[51]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4343,7 +4571,7 @@ func (x *SimulationFrameClocks) String() string {
 func (*SimulationFrameClocks) ProtoMessage() {}
 
 func (x *SimulationFrameClocks) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[51]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4356,7 +4584,7 @@ func (x *SimulationFrameClocks) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationFrameClocks.ProtoReflect.Descriptor instead.
 func (*SimulationFrameClocks) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{51}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *SimulationFrameClocks) GetSimulationSeconds() string {
@@ -4389,7 +4617,7 @@ type SimulationFrames struct {
 
 func (x *SimulationFrames) Reset() {
 	*x = SimulationFrames{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[52]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4401,7 +4629,7 @@ func (x *SimulationFrames) String() string {
 func (*SimulationFrames) ProtoMessage() {}
 
 func (x *SimulationFrames) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[52]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4414,7 +4642,7 @@ func (x *SimulationFrames) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationFrames.ProtoReflect.Descriptor instead.
 func (*SimulationFrames) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{52}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *SimulationFrames) GetFormat() string {
@@ -4488,7 +4716,7 @@ type SimulationTraceSource struct {
 
 func (x *SimulationTraceSource) Reset() {
 	*x = SimulationTraceSource{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[53]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4500,7 +4728,7 @@ func (x *SimulationTraceSource) String() string {
 func (*SimulationTraceSource) ProtoMessage() {}
 
 func (x *SimulationTraceSource) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[53]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4513,7 +4741,7 @@ func (x *SimulationTraceSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationTraceSource.ProtoReflect.Descriptor instead.
 func (*SimulationTraceSource) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{53}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *SimulationTraceSource) GetRun() *SimulationRun {
@@ -4579,7 +4807,7 @@ type SimulationLogRecord struct {
 
 func (x *SimulationLogRecord) Reset() {
 	*x = SimulationLogRecord{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[54]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4591,7 +4819,7 @@ func (x *SimulationLogRecord) String() string {
 func (*SimulationLogRecord) ProtoMessage() {}
 
 func (x *SimulationLogRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[54]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4604,7 +4832,7 @@ func (x *SimulationLogRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationLogRecord.ProtoReflect.Descriptor instead.
 func (*SimulationLogRecord) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{54}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *SimulationLogRecord) GetRecordedAt() string {
@@ -4663,7 +4891,7 @@ type SubmitSimulationRequest struct {
 
 func (x *SubmitSimulationRequest) Reset() {
 	*x = SubmitSimulationRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[55]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4675,7 +4903,7 @@ func (x *SubmitSimulationRequest) String() string {
 func (*SubmitSimulationRequest) ProtoMessage() {}
 
 func (x *SubmitSimulationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[55]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4688,7 +4916,7 @@ func (x *SubmitSimulationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitSimulationRequest.ProtoReflect.Descriptor instead.
 func (*SubmitSimulationRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{55}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *SubmitSimulationRequest) GetRunId() string {
@@ -4735,7 +4963,7 @@ type SubmitSimulationResponse struct {
 
 func (x *SubmitSimulationResponse) Reset() {
 	*x = SubmitSimulationResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[56]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4747,7 +4975,7 @@ func (x *SubmitSimulationResponse) String() string {
 func (*SubmitSimulationResponse) ProtoMessage() {}
 
 func (x *SubmitSimulationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[56]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4760,7 +4988,7 @@ func (x *SubmitSimulationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitSimulationResponse.ProtoReflect.Descriptor instead.
 func (*SubmitSimulationResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{56}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *SubmitSimulationResponse) GetRun() *SimulationRun {
@@ -4779,7 +5007,7 @@ type InspectSimulationRequest struct {
 
 func (x *InspectSimulationRequest) Reset() {
 	*x = InspectSimulationRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[57]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4791,7 +5019,7 @@ func (x *InspectSimulationRequest) String() string {
 func (*InspectSimulationRequest) ProtoMessage() {}
 
 func (x *InspectSimulationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[57]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4804,7 +5032,7 @@ func (x *InspectSimulationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectSimulationRequest.ProtoReflect.Descriptor instead.
 func (*InspectSimulationRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{57}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *InspectSimulationRequest) GetRunId() string {
@@ -4823,7 +5051,7 @@ type InspectSimulationResponse struct {
 
 func (x *InspectSimulationResponse) Reset() {
 	*x = InspectSimulationResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[58]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4835,7 +5063,7 @@ func (x *InspectSimulationResponse) String() string {
 func (*InspectSimulationResponse) ProtoMessage() {}
 
 func (x *InspectSimulationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[58]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4848,7 +5076,7 @@ func (x *InspectSimulationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectSimulationResponse.ProtoReflect.Descriptor instead.
 func (*InspectSimulationResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{58}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *InspectSimulationResponse) GetRun() *SimulationRun {
@@ -4867,7 +5095,7 @@ type ListSimulationsRequest struct {
 
 func (x *ListSimulationsRequest) Reset() {
 	*x = ListSimulationsRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[59]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4879,7 +5107,7 @@ func (x *ListSimulationsRequest) String() string {
 func (*ListSimulationsRequest) ProtoMessage() {}
 
 func (x *ListSimulationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[59]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4892,7 +5120,7 @@ func (x *ListSimulationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSimulationsRequest.ProtoReflect.Descriptor instead.
 func (*ListSimulationsRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{59}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ListSimulationsRequest) GetLimit() uint32 {
@@ -4911,7 +5139,7 @@ type ListSimulationsResponse struct {
 
 func (x *ListSimulationsResponse) Reset() {
 	*x = ListSimulationsResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[60]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4923,7 +5151,7 @@ func (x *ListSimulationsResponse) String() string {
 func (*ListSimulationsResponse) ProtoMessage() {}
 
 func (x *ListSimulationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[60]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4936,7 +5164,7 @@ func (x *ListSimulationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSimulationsResponse.ProtoReflect.Descriptor instead.
 func (*ListSimulationsResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{60}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *ListSimulationsResponse) GetRuns() []*SimulationRun {
@@ -4956,7 +5184,7 @@ type RecordSimulationEventsRequest struct {
 
 func (x *RecordSimulationEventsRequest) Reset() {
 	*x = RecordSimulationEventsRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[61]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4968,7 +5196,7 @@ func (x *RecordSimulationEventsRequest) String() string {
 func (*RecordSimulationEventsRequest) ProtoMessage() {}
 
 func (x *RecordSimulationEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[61]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4981,7 +5209,7 @@ func (x *RecordSimulationEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordSimulationEventsRequest.ProtoReflect.Descriptor instead.
 func (*RecordSimulationEventsRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{61}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *RecordSimulationEventsRequest) GetRunId() string {
@@ -5007,7 +5235,7 @@ type RecordSimulationEventsResponse struct {
 
 func (x *RecordSimulationEventsResponse) Reset() {
 	*x = RecordSimulationEventsResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[62]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5019,7 +5247,7 @@ func (x *RecordSimulationEventsResponse) String() string {
 func (*RecordSimulationEventsResponse) ProtoMessage() {}
 
 func (x *RecordSimulationEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[62]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5032,7 +5260,7 @@ func (x *RecordSimulationEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordSimulationEventsResponse.ProtoReflect.Descriptor instead.
 func (*RecordSimulationEventsResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{62}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *RecordSimulationEventsResponse) GetRun() *SimulationRun {
@@ -5051,7 +5279,7 @@ type CancelSimulationRequest struct {
 
 func (x *CancelSimulationRequest) Reset() {
 	*x = CancelSimulationRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[63]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5063,7 +5291,7 @@ func (x *CancelSimulationRequest) String() string {
 func (*CancelSimulationRequest) ProtoMessage() {}
 
 func (x *CancelSimulationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[63]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5076,7 +5304,7 @@ func (x *CancelSimulationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelSimulationRequest.ProtoReflect.Descriptor instead.
 func (*CancelSimulationRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{63}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *CancelSimulationRequest) GetRunId() string {
@@ -5095,7 +5323,7 @@ type CancelSimulationResponse struct {
 
 func (x *CancelSimulationResponse) Reset() {
 	*x = CancelSimulationResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[64]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5107,7 +5335,7 @@ func (x *CancelSimulationResponse) String() string {
 func (*CancelSimulationResponse) ProtoMessage() {}
 
 func (x *CancelSimulationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[64]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5120,7 +5348,7 @@ func (x *CancelSimulationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelSimulationResponse.ProtoReflect.Descriptor instead.
 func (*CancelSimulationResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{64}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *CancelSimulationResponse) GetRun() *SimulationRun {
@@ -5140,7 +5368,7 @@ type ReadSimulationLogsRequest struct {
 
 func (x *ReadSimulationLogsRequest) Reset() {
 	*x = ReadSimulationLogsRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[65]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5152,7 +5380,7 @@ func (x *ReadSimulationLogsRequest) String() string {
 func (*ReadSimulationLogsRequest) ProtoMessage() {}
 
 func (x *ReadSimulationLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[65]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5165,7 +5393,7 @@ func (x *ReadSimulationLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadSimulationLogsRequest.ProtoReflect.Descriptor instead.
 func (*ReadSimulationLogsRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{65}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ReadSimulationLogsRequest) GetRunId() string {
@@ -5193,7 +5421,7 @@ type ReadSimulationLogsResponse struct {
 
 func (x *ReadSimulationLogsResponse) Reset() {
 	*x = ReadSimulationLogsResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[66]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5205,7 +5433,7 @@ func (x *ReadSimulationLogsResponse) String() string {
 func (*ReadSimulationLogsResponse) ProtoMessage() {}
 
 func (x *ReadSimulationLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[66]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5218,7 +5446,7 @@ func (x *ReadSimulationLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadSimulationLogsResponse.ProtoReflect.Descriptor instead.
 func (*ReadSimulationLogsResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{66}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *ReadSimulationLogsResponse) GetContent() string {
@@ -5251,7 +5479,7 @@ type RebuildSimulationTraceRequest struct {
 
 func (x *RebuildSimulationTraceRequest) Reset() {
 	*x = RebuildSimulationTraceRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[67]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5263,7 +5491,7 @@ func (x *RebuildSimulationTraceRequest) String() string {
 func (*RebuildSimulationTraceRequest) ProtoMessage() {}
 
 func (x *RebuildSimulationTraceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[67]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5276,7 +5504,7 @@ func (x *RebuildSimulationTraceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RebuildSimulationTraceRequest.ProtoReflect.Descriptor instead.
 func (*RebuildSimulationTraceRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{67}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *RebuildSimulationTraceRequest) GetRunId() string {
@@ -5296,7 +5524,7 @@ type RebuildSimulationTraceResponse struct {
 
 func (x *RebuildSimulationTraceResponse) Reset() {
 	*x = RebuildSimulationTraceResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[68]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5308,7 +5536,7 @@ func (x *RebuildSimulationTraceResponse) String() string {
 func (*RebuildSimulationTraceResponse) ProtoMessage() {}
 
 func (x *RebuildSimulationTraceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[68]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5321,7 +5549,7 @@ func (x *RebuildSimulationTraceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RebuildSimulationTraceResponse.ProtoReflect.Descriptor instead.
 func (*RebuildSimulationTraceResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{68}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *RebuildSimulationTraceResponse) GetRun() *SimulationRun {
@@ -5351,7 +5579,7 @@ type SimulationProfile struct {
 
 func (x *SimulationProfile) Reset() {
 	*x = SimulationProfile{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[69]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5363,7 +5591,7 @@ func (x *SimulationProfile) String() string {
 func (*SimulationProfile) ProtoMessage() {}
 
 func (x *SimulationProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[69]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5376,7 +5604,7 @@ func (x *SimulationProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationProfile.ProtoReflect.Descriptor instead.
 func (*SimulationProfile) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{69}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *SimulationProfile) GetSimulator() Simulator {
@@ -5416,7 +5644,7 @@ type SimulationConfig struct {
 
 func (x *SimulationConfig) Reset() {
 	*x = SimulationConfig{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[70]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5428,7 +5656,7 @@ func (x *SimulationConfig) String() string {
 func (*SimulationConfig) ProtoMessage() {}
 
 func (x *SimulationConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[70]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5441,7 +5669,7 @@ func (x *SimulationConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SimulationConfig.ProtoReflect.Descriptor instead.
 func (*SimulationConfig) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{70}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *SimulationConfig) GetRegion() string {
@@ -5515,7 +5743,7 @@ type LocalSimulationProfile struct {
 
 func (x *LocalSimulationProfile) Reset() {
 	*x = LocalSimulationProfile{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[71]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5527,7 +5755,7 @@ func (x *LocalSimulationProfile) String() string {
 func (*LocalSimulationProfile) ProtoMessage() {}
 
 func (x *LocalSimulationProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[71]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5540,7 +5768,7 @@ func (x *LocalSimulationProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LocalSimulationProfile.ProtoReflect.Descriptor instead.
 func (*LocalSimulationProfile) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{71}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *LocalSimulationProfile) GetSimulator() Simulator {
@@ -5595,7 +5823,7 @@ type LocalSimulationConfig struct {
 
 func (x *LocalSimulationConfig) Reset() {
 	*x = LocalSimulationConfig{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[72]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5607,7 +5835,7 @@ func (x *LocalSimulationConfig) String() string {
 func (*LocalSimulationConfig) ProtoMessage() {}
 
 func (x *LocalSimulationConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[72]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5620,7 +5848,7 @@ func (x *LocalSimulationConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LocalSimulationConfig.ProtoReflect.Descriptor instead.
 func (*LocalSimulationConfig) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{72}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *LocalSimulationConfig) GetDockerHost() string {
@@ -5692,7 +5920,7 @@ type WorkbenchTheme struct {
 
 func (x *WorkbenchTheme) Reset() {
 	*x = WorkbenchTheme{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[73]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5704,7 +5932,7 @@ func (x *WorkbenchTheme) String() string {
 func (*WorkbenchTheme) ProtoMessage() {}
 
 func (x *WorkbenchTheme) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[73]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5717,7 +5945,7 @@ func (x *WorkbenchTheme) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkbenchTheme.ProtoReflect.Descriptor instead.
 func (*WorkbenchTheme) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{73}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *WorkbenchTheme) GetCustomCss() string {
@@ -5742,7 +5970,7 @@ type GetWorkbenchThemeRequest struct {
 
 func (x *GetWorkbenchThemeRequest) Reset() {
 	*x = GetWorkbenchThemeRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[74]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5754,7 +5982,7 @@ func (x *GetWorkbenchThemeRequest) String() string {
 func (*GetWorkbenchThemeRequest) ProtoMessage() {}
 
 func (x *GetWorkbenchThemeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[74]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5767,7 +5995,7 @@ func (x *GetWorkbenchThemeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkbenchThemeRequest.ProtoReflect.Descriptor instead.
 func (*GetWorkbenchThemeRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{74}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{77}
 }
 
 type GetWorkbenchThemeResponse struct {
@@ -5779,7 +6007,7 @@ type GetWorkbenchThemeResponse struct {
 
 func (x *GetWorkbenchThemeResponse) Reset() {
 	*x = GetWorkbenchThemeResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[75]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5791,7 +6019,7 @@ func (x *GetWorkbenchThemeResponse) String() string {
 func (*GetWorkbenchThemeResponse) ProtoMessage() {}
 
 func (x *GetWorkbenchThemeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[75]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5804,7 +6032,7 @@ func (x *GetWorkbenchThemeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWorkbenchThemeResponse.ProtoReflect.Descriptor instead.
 func (*GetWorkbenchThemeResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{75}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *GetWorkbenchThemeResponse) GetTheme() *WorkbenchTheme {
@@ -5822,7 +6050,7 @@ type ReloadWorkbenchThemeRequest struct {
 
 func (x *ReloadWorkbenchThemeRequest) Reset() {
 	*x = ReloadWorkbenchThemeRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[76]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5834,7 +6062,7 @@ func (x *ReloadWorkbenchThemeRequest) String() string {
 func (*ReloadWorkbenchThemeRequest) ProtoMessage() {}
 
 func (x *ReloadWorkbenchThemeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[76]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5847,7 +6075,7 @@ func (x *ReloadWorkbenchThemeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadWorkbenchThemeRequest.ProtoReflect.Descriptor instead.
 func (*ReloadWorkbenchThemeRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{76}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{79}
 }
 
 type ReloadWorkbenchThemeResponse struct {
@@ -5859,7 +6087,7 @@ type ReloadWorkbenchThemeResponse struct {
 
 func (x *ReloadWorkbenchThemeResponse) Reset() {
 	*x = ReloadWorkbenchThemeResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[77]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5871,7 +6099,7 @@ func (x *ReloadWorkbenchThemeResponse) String() string {
 func (*ReloadWorkbenchThemeResponse) ProtoMessage() {}
 
 func (x *ReloadWorkbenchThemeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[77]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5884,7 +6112,7 @@ func (x *ReloadWorkbenchThemeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadWorkbenchThemeResponse.ProtoReflect.Descriptor instead.
 func (*ReloadWorkbenchThemeResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{77}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *ReloadWorkbenchThemeResponse) GetTheme() *WorkbenchTheme {
@@ -5908,7 +6136,7 @@ type AgentDefinition struct {
 
 func (x *AgentDefinition) Reset() {
 	*x = AgentDefinition{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[78]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5920,7 +6148,7 @@ func (x *AgentDefinition) String() string {
 func (*AgentDefinition) ProtoMessage() {}
 
 func (x *AgentDefinition) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[78]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5933,7 +6161,7 @@ func (x *AgentDefinition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentDefinition.ProtoReflect.Descriptor instead.
 func (*AgentDefinition) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{78}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *AgentDefinition) GetId() string {
@@ -5978,7 +6206,7 @@ type AgentLangfuseConfiguration struct {
 
 func (x *AgentLangfuseConfiguration) Reset() {
 	*x = AgentLangfuseConfiguration{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[79]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5990,7 +6218,7 @@ func (x *AgentLangfuseConfiguration) String() string {
 func (*AgentLangfuseConfiguration) ProtoMessage() {}
 
 func (x *AgentLangfuseConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[79]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6003,7 +6231,7 @@ func (x *AgentLangfuseConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentLangfuseConfiguration.ProtoReflect.Descriptor instead.
 func (*AgentLangfuseConfiguration) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{79}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *AgentLangfuseConfiguration) GetEndpointUrl() string {
@@ -6041,7 +6269,7 @@ type AgentOpenSearchConfiguration struct {
 
 func (x *AgentOpenSearchConfiguration) Reset() {
 	*x = AgentOpenSearchConfiguration{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[80]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6053,7 +6281,7 @@ func (x *AgentOpenSearchConfiguration) String() string {
 func (*AgentOpenSearchConfiguration) ProtoMessage() {}
 
 func (x *AgentOpenSearchConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[80]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6066,7 +6294,7 @@ func (x *AgentOpenSearchConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentOpenSearchConfiguration.ProtoReflect.Descriptor instead.
 func (*AgentOpenSearchConfiguration) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{80}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *AgentOpenSearchConfiguration) GetEndpointUrl() string {
@@ -6109,7 +6337,7 @@ type AgentConfigurationInput struct {
 
 func (x *AgentConfigurationInput) Reset() {
 	*x = AgentConfigurationInput{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[81]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6121,7 +6349,7 @@ func (x *AgentConfigurationInput) String() string {
 func (*AgentConfigurationInput) ProtoMessage() {}
 
 func (x *AgentConfigurationInput) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[81]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6134,7 +6362,7 @@ func (x *AgentConfigurationInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentConfigurationInput.ProtoReflect.Descriptor instead.
 func (*AgentConfigurationInput) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{81}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *AgentConfigurationInput) GetLangfuse() *AgentLangfuseConfiguration {
@@ -6166,7 +6394,7 @@ type AgentConfiguration struct {
 
 func (x *AgentConfiguration) Reset() {
 	*x = AgentConfiguration{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[82]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6178,7 +6406,7 @@ func (x *AgentConfiguration) String() string {
 func (*AgentConfiguration) ProtoMessage() {}
 
 func (x *AgentConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[82]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6191,7 +6419,7 @@ func (x *AgentConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentConfiguration.ProtoReflect.Descriptor instead.
 func (*AgentConfiguration) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{82}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *AgentConfiguration) GetAgentId() string {
@@ -6237,7 +6465,7 @@ type GetOwnAgentConfigurationRequest struct {
 
 func (x *GetOwnAgentConfigurationRequest) Reset() {
 	*x = GetOwnAgentConfigurationRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[83]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6249,7 +6477,7 @@ func (x *GetOwnAgentConfigurationRequest) String() string {
 func (*GetOwnAgentConfigurationRequest) ProtoMessage() {}
 
 func (x *GetOwnAgentConfigurationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[83]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6262,7 +6490,7 @@ func (x *GetOwnAgentConfigurationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOwnAgentConfigurationRequest.ProtoReflect.Descriptor instead.
 func (*GetOwnAgentConfigurationRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{83}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{86}
 }
 
 type GetOwnAgentConfigurationResponse struct {
@@ -6274,7 +6502,7 @@ type GetOwnAgentConfigurationResponse struct {
 
 func (x *GetOwnAgentConfigurationResponse) Reset() {
 	*x = GetOwnAgentConfigurationResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[84]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6286,7 +6514,7 @@ func (x *GetOwnAgentConfigurationResponse) String() string {
 func (*GetOwnAgentConfigurationResponse) ProtoMessage() {}
 
 func (x *GetOwnAgentConfigurationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[84]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6299,7 +6527,7 @@ func (x *GetOwnAgentConfigurationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOwnAgentConfigurationResponse.ProtoReflect.Descriptor instead.
 func (*GetOwnAgentConfigurationResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{84}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *GetOwnAgentConfigurationResponse) GetConfiguration() *AgentConfiguration {
@@ -6321,7 +6549,7 @@ type UpdateOwnAgentConfigurationRequest struct {
 
 func (x *UpdateOwnAgentConfigurationRequest) Reset() {
 	*x = UpdateOwnAgentConfigurationRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[85]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6333,7 +6561,7 @@ func (x *UpdateOwnAgentConfigurationRequest) String() string {
 func (*UpdateOwnAgentConfigurationRequest) ProtoMessage() {}
 
 func (x *UpdateOwnAgentConfigurationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[85]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6346,7 +6574,7 @@ func (x *UpdateOwnAgentConfigurationRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use UpdateOwnAgentConfigurationRequest.ProtoReflect.Descriptor instead.
 func (*UpdateOwnAgentConfigurationRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{85}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *UpdateOwnAgentConfigurationRequest) GetExpectedRevision() uint32 {
@@ -6372,7 +6600,7 @@ type UpdateOwnAgentConfigurationResponse struct {
 
 func (x *UpdateOwnAgentConfigurationResponse) Reset() {
 	*x = UpdateOwnAgentConfigurationResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[86]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6384,7 +6612,7 @@ func (x *UpdateOwnAgentConfigurationResponse) String() string {
 func (*UpdateOwnAgentConfigurationResponse) ProtoMessage() {}
 
 func (x *UpdateOwnAgentConfigurationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[86]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6397,7 +6625,7 @@ func (x *UpdateOwnAgentConfigurationResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use UpdateOwnAgentConfigurationResponse.ProtoReflect.Descriptor instead.
 func (*UpdateOwnAgentConfigurationResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{86}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *UpdateOwnAgentConfigurationResponse) GetConfiguration() *AgentConfiguration {
@@ -6424,7 +6652,7 @@ type AgentAssignmentRecipe struct {
 
 func (x *AgentAssignmentRecipe) Reset() {
 	*x = AgentAssignmentRecipe{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[87]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6436,7 +6664,7 @@ func (x *AgentAssignmentRecipe) String() string {
 func (*AgentAssignmentRecipe) ProtoMessage() {}
 
 func (x *AgentAssignmentRecipe) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[87]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6449,7 +6677,7 @@ func (x *AgentAssignmentRecipe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentAssignmentRecipe.ProtoReflect.Descriptor instead.
 func (*AgentAssignmentRecipe) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{87}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *AgentAssignmentRecipe) GetAssignmentId() string {
@@ -6509,7 +6737,7 @@ type AgentAssignmentPlan struct {
 
 func (x *AgentAssignmentPlan) Reset() {
 	*x = AgentAssignmentPlan{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[88]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6521,7 +6749,7 @@ func (x *AgentAssignmentPlan) String() string {
 func (*AgentAssignmentPlan) ProtoMessage() {}
 
 func (x *AgentAssignmentPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[88]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6534,7 +6762,7 @@ func (x *AgentAssignmentPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentAssignmentPlan.ProtoReflect.Descriptor instead.
 func (*AgentAssignmentPlan) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{88}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *AgentAssignmentPlan) GetRecipe() *AgentAssignmentRecipe {
@@ -6581,7 +6809,7 @@ type PrepareAgentAssignmentRequest struct {
 
 func (x *PrepareAgentAssignmentRequest) Reset() {
 	*x = PrepareAgentAssignmentRequest{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[89]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6593,7 +6821,7 @@ func (x *PrepareAgentAssignmentRequest) String() string {
 func (*PrepareAgentAssignmentRequest) ProtoMessage() {}
 
 func (x *PrepareAgentAssignmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[89]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6606,7 +6834,7 @@ func (x *PrepareAgentAssignmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrepareAgentAssignmentRequest.ProtoReflect.Descriptor instead.
 func (*PrepareAgentAssignmentRequest) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{89}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *PrepareAgentAssignmentRequest) GetRecipe() *AgentAssignmentRecipe {
@@ -6625,7 +6853,7 @@ type PrepareAgentAssignmentResponse struct {
 
 func (x *PrepareAgentAssignmentResponse) Reset() {
 	*x = PrepareAgentAssignmentResponse{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[90]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6637,7 +6865,7 @@ func (x *PrepareAgentAssignmentResponse) String() string {
 func (*PrepareAgentAssignmentResponse) ProtoMessage() {}
 
 func (x *PrepareAgentAssignmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[90]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6650,7 +6878,7 @@ func (x *PrepareAgentAssignmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrepareAgentAssignmentResponse.ProtoReflect.Descriptor instead.
 func (*PrepareAgentAssignmentResponse) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{90}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *PrepareAgentAssignmentResponse) GetPlan() *AgentAssignmentPlan {
@@ -6676,7 +6904,7 @@ type AgentAssignmentReceipt struct {
 
 func (x *AgentAssignmentReceipt) Reset() {
 	*x = AgentAssignmentReceipt{}
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[91]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6688,7 +6916,7 @@ func (x *AgentAssignmentReceipt) String() string {
 func (*AgentAssignmentReceipt) ProtoMessage() {}
 
 func (x *AgentAssignmentReceipt) ProtoReflect() protoreflect.Message {
-	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[91]
+	mi := &file_candace_brainspine_v1_brainspine_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6701,7 +6929,7 @@ func (x *AgentAssignmentReceipt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentAssignmentReceipt.ProtoReflect.Descriptor instead.
 func (*AgentAssignmentReceipt) Descriptor() ([]byte, []int) {
-	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{91}
+	return file_candace_brainspine_v1_brainspine_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *AgentAssignmentReceipt) GetPlan() *AgentAssignmentPlan {
@@ -6945,7 +7173,27 @@ const file_candace_brainspine_v1_brainspine_proto_rawDesc = "" +
 	"projection\x18\x05 \x01(\v2%.candace.brainspine.v1.ProjectionTaskR\n" +
 	"projection\"]\n" +
 	"\x16IngestDocumentResponse\x12C\n" +
-	"\x06result\x18\x01 \x01(\v2+.candace.brainspine.v1.IngestDocumentResultR\x06result\"\xf8\x01\n" +
+	"\x06result\x18\x01 \x01(\v2+.candace.brainspine.v1.IngestDocumentResultR\x06result\"\xaf\x01\n" +
+	"\x14LearnAboutCSFRequest\x12%\n" +
+	"\x0econsumer_paths\x18\x01 \x03(\tR\rconsumerPaths\x12@\n" +
+	"\x0fretrieval_query\x18\x02 \x01(\tB\x17\x92\x82\x19\x13\n" +
+	"\x11len(this) <= 4096R\x0eretrievalQuery\x12.\n" +
+	"\x13copilot_session_ids\x18\x03 \x03(\tR\x11copilotSessionIds\"\xa5\x03\n" +
+	"\x15LearnAboutCSFResponse\x12+\n" +
+	"\x11guidance_markdown\x18\x01 \x01(\tR\x10guidanceMarkdown\x12/\n" +
+	"\x13knowledge_available\x18\x02 \x01(\bR\x12knowledgeAvailable\x12'\n" +
+	"\x0fknowledge_error\x18\x03 \x01(\tR\x0eknowledgeError\x12G\n" +
+	"\bingested\x18\x04 \x03(\v2+.candace.brainspine.v1.IngestDocumentResultR\bingested\x12#\n" +
+	"\rskipped_paths\x18\x05 \x03(\tR\fskippedPaths\x12A\n" +
+	"\tretrieval\x18\x06 \x01(\v2#.candace.brainspine.v1.SearchResultR\tretrieval\x12T\n" +
+	"\x0fcopilot_history\x18\a \x03(\v2+.candace.brainspine.v1.CopilotHistoryResultR\x0ecopilotHistory\"\xb1\x01\n" +
+	"\x14CopilotHistoryResult\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1f\n" +
+	"\vevent_count\x18\x02 \x01(\x04R\n" +
+	"eventCount\x12C\n" +
+	"\x06ingest\x18\x03 \x01(\v2+.candace.brainspine.v1.IngestDocumentResultR\x06ingest\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\"\xf8\x01\n" +
 	"\x0eProjectionTask\x12B\n" +
 	"\bdocument\x18\x01 \x01(\v2&.candace.brainspine.v1.DocumentRequestR\bdocument\x12<\n" +
 	"\x05state\x18\x02 \x01(\x0e2&.candace.brainspine.v1.ProjectionStateR\x05state\x12\x1a\n" +
@@ -7374,7 +7622,7 @@ func file_candace_brainspine_v1_brainspine_proto_rawDescGZIP() []byte {
 }
 
 var file_candace_brainspine_v1_brainspine_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
-var file_candace_brainspine_v1_brainspine_proto_msgTypes = make([]protoimpl.MessageInfo, 92)
+var file_candace_brainspine_v1_brainspine_proto_msgTypes = make([]protoimpl.MessageInfo, 95)
 var file_candace_brainspine_v1_brainspine_proto_goTypes = []any{
 	(Opcode)(0),                                 // 0: candace.brainspine.v1.Opcode
 	(RequestKind)(0),                            // 1: candace.brainspine.v1.RequestKind
@@ -7413,72 +7661,75 @@ var file_candace_brainspine_v1_brainspine_proto_goTypes = []any{
 	(*IngestDocumentRequest)(nil),               // 34: candace.brainspine.v1.IngestDocumentRequest
 	(*IngestDocumentResult)(nil),                // 35: candace.brainspine.v1.IngestDocumentResult
 	(*IngestDocumentResponse)(nil),              // 36: candace.brainspine.v1.IngestDocumentResponse
-	(*ProjectionTask)(nil),                      // 37: candace.brainspine.v1.ProjectionTask
-	(*ProjectionCount)(nil),                     // 38: candace.brainspine.v1.ProjectionCount
-	(*DocumentRequest)(nil),                     // 39: candace.brainspine.v1.DocumentRequest
-	(*DocumentResult)(nil),                      // 40: candace.brainspine.v1.DocumentResult
-	(*GetDocumentRequest)(nil),                  // 41: candace.brainspine.v1.GetDocumentRequest
-	(*GetDocumentResponse)(nil),                 // 42: candace.brainspine.v1.GetDocumentResponse
-	(*SearchRequest)(nil),                       // 43: candace.brainspine.v1.SearchRequest
-	(*SearchHit)(nil),                           // 44: candace.brainspine.v1.SearchHit
-	(*SearchResult)(nil),                        // 45: candace.brainspine.v1.SearchResult
-	(*SearchResponse)(nil),                      // 46: candace.brainspine.v1.SearchResponse
-	(*KnowledgeNode)(nil),                       // 47: candace.brainspine.v1.KnowledgeNode
-	(*PutNodeRequest)(nil),                      // 48: candace.brainspine.v1.PutNodeRequest
-	(*PutNodeResponse)(nil),                     // 49: candace.brainspine.v1.PutNodeResponse
-	(*KnowledgeEdge)(nil),                       // 50: candace.brainspine.v1.KnowledgeEdge
-	(*PutEdgeRequest)(nil),                      // 51: candace.brainspine.v1.PutEdgeRequest
-	(*PutEdgeResponse)(nil),                     // 52: candace.brainspine.v1.PutEdgeResponse
-	(*GraphRequest)(nil),                        // 53: candace.brainspine.v1.GraphRequest
-	(*GraphSnapshot)(nil),                       // 54: candace.brainspine.v1.GraphSnapshot
-	(*GetGraphRequest)(nil),                     // 55: candace.brainspine.v1.GetGraphRequest
-	(*GetGraphResponse)(nil),                    // 56: candace.brainspine.v1.GetGraphResponse
-	(*SimulationRun)(nil),                       // 57: candace.brainspine.v1.SimulationRun
-	(*SimulationArtifact)(nil),                  // 58: candace.brainspine.v1.SimulationArtifact
-	(*SimulationFrame)(nil),                     // 59: candace.brainspine.v1.SimulationFrame
-	(*SimulationFrameDimensions)(nil),           // 60: candace.brainspine.v1.SimulationFrameDimensions
-	(*SimulationFrameClocks)(nil),               // 61: candace.brainspine.v1.SimulationFrameClocks
-	(*SimulationFrames)(nil),                    // 62: candace.brainspine.v1.SimulationFrames
-	(*SimulationTraceSource)(nil),               // 63: candace.brainspine.v1.SimulationTraceSource
-	(*SimulationLogRecord)(nil),                 // 64: candace.brainspine.v1.SimulationLogRecord
-	(*SubmitSimulationRequest)(nil),             // 65: candace.brainspine.v1.SubmitSimulationRequest
-	(*SubmitSimulationResponse)(nil),            // 66: candace.brainspine.v1.SubmitSimulationResponse
-	(*InspectSimulationRequest)(nil),            // 67: candace.brainspine.v1.InspectSimulationRequest
-	(*InspectSimulationResponse)(nil),           // 68: candace.brainspine.v1.InspectSimulationResponse
-	(*ListSimulationsRequest)(nil),              // 69: candace.brainspine.v1.ListSimulationsRequest
-	(*ListSimulationsResponse)(nil),             // 70: candace.brainspine.v1.ListSimulationsResponse
-	(*RecordSimulationEventsRequest)(nil),       // 71: candace.brainspine.v1.RecordSimulationEventsRequest
-	(*RecordSimulationEventsResponse)(nil),      // 72: candace.brainspine.v1.RecordSimulationEventsResponse
-	(*CancelSimulationRequest)(nil),             // 73: candace.brainspine.v1.CancelSimulationRequest
-	(*CancelSimulationResponse)(nil),            // 74: candace.brainspine.v1.CancelSimulationResponse
-	(*ReadSimulationLogsRequest)(nil),           // 75: candace.brainspine.v1.ReadSimulationLogsRequest
-	(*ReadSimulationLogsResponse)(nil),          // 76: candace.brainspine.v1.ReadSimulationLogsResponse
-	(*RebuildSimulationTraceRequest)(nil),       // 77: candace.brainspine.v1.RebuildSimulationTraceRequest
-	(*RebuildSimulationTraceResponse)(nil),      // 78: candace.brainspine.v1.RebuildSimulationTraceResponse
-	(*SimulationProfile)(nil),                   // 79: candace.brainspine.v1.SimulationProfile
-	(*SimulationConfig)(nil),                    // 80: candace.brainspine.v1.SimulationConfig
-	(*LocalSimulationProfile)(nil),              // 81: candace.brainspine.v1.LocalSimulationProfile
-	(*LocalSimulationConfig)(nil),               // 82: candace.brainspine.v1.LocalSimulationConfig
-	(*WorkbenchTheme)(nil),                      // 83: candace.brainspine.v1.WorkbenchTheme
-	(*GetWorkbenchThemeRequest)(nil),            // 84: candace.brainspine.v1.GetWorkbenchThemeRequest
-	(*GetWorkbenchThemeResponse)(nil),           // 85: candace.brainspine.v1.GetWorkbenchThemeResponse
-	(*ReloadWorkbenchThemeRequest)(nil),         // 86: candace.brainspine.v1.ReloadWorkbenchThemeRequest
-	(*ReloadWorkbenchThemeResponse)(nil),        // 87: candace.brainspine.v1.ReloadWorkbenchThemeResponse
-	(*AgentDefinition)(nil),                     // 88: candace.brainspine.v1.AgentDefinition
-	(*AgentLangfuseConfiguration)(nil),          // 89: candace.brainspine.v1.AgentLangfuseConfiguration
-	(*AgentOpenSearchConfiguration)(nil),        // 90: candace.brainspine.v1.AgentOpenSearchConfiguration
-	(*AgentConfigurationInput)(nil),             // 91: candace.brainspine.v1.AgentConfigurationInput
-	(*AgentConfiguration)(nil),                  // 92: candace.brainspine.v1.AgentConfiguration
-	(*GetOwnAgentConfigurationRequest)(nil),     // 93: candace.brainspine.v1.GetOwnAgentConfigurationRequest
-	(*GetOwnAgentConfigurationResponse)(nil),    // 94: candace.brainspine.v1.GetOwnAgentConfigurationResponse
-	(*UpdateOwnAgentConfigurationRequest)(nil),  // 95: candace.brainspine.v1.UpdateOwnAgentConfigurationRequest
-	(*UpdateOwnAgentConfigurationResponse)(nil), // 96: candace.brainspine.v1.UpdateOwnAgentConfigurationResponse
-	(*AgentAssignmentRecipe)(nil),               // 97: candace.brainspine.v1.AgentAssignmentRecipe
-	(*AgentAssignmentPlan)(nil),                 // 98: candace.brainspine.v1.AgentAssignmentPlan
-	(*PrepareAgentAssignmentRequest)(nil),       // 99: candace.brainspine.v1.PrepareAgentAssignmentRequest
-	(*PrepareAgentAssignmentResponse)(nil),      // 100: candace.brainspine.v1.PrepareAgentAssignmentResponse
-	(*AgentAssignmentReceipt)(nil),              // 101: candace.brainspine.v1.AgentAssignmentReceipt
-	(*timestamppb.Timestamp)(nil),               // 102: google.protobuf.Timestamp
+	(*LearnAboutCSFRequest)(nil),                // 37: candace.brainspine.v1.LearnAboutCSFRequest
+	(*LearnAboutCSFResponse)(nil),               // 38: candace.brainspine.v1.LearnAboutCSFResponse
+	(*CopilotHistoryResult)(nil),                // 39: candace.brainspine.v1.CopilotHistoryResult
+	(*ProjectionTask)(nil),                      // 40: candace.brainspine.v1.ProjectionTask
+	(*ProjectionCount)(nil),                     // 41: candace.brainspine.v1.ProjectionCount
+	(*DocumentRequest)(nil),                     // 42: candace.brainspine.v1.DocumentRequest
+	(*DocumentResult)(nil),                      // 43: candace.brainspine.v1.DocumentResult
+	(*GetDocumentRequest)(nil),                  // 44: candace.brainspine.v1.GetDocumentRequest
+	(*GetDocumentResponse)(nil),                 // 45: candace.brainspine.v1.GetDocumentResponse
+	(*SearchRequest)(nil),                       // 46: candace.brainspine.v1.SearchRequest
+	(*SearchHit)(nil),                           // 47: candace.brainspine.v1.SearchHit
+	(*SearchResult)(nil),                        // 48: candace.brainspine.v1.SearchResult
+	(*SearchResponse)(nil),                      // 49: candace.brainspine.v1.SearchResponse
+	(*KnowledgeNode)(nil),                       // 50: candace.brainspine.v1.KnowledgeNode
+	(*PutNodeRequest)(nil),                      // 51: candace.brainspine.v1.PutNodeRequest
+	(*PutNodeResponse)(nil),                     // 52: candace.brainspine.v1.PutNodeResponse
+	(*KnowledgeEdge)(nil),                       // 53: candace.brainspine.v1.KnowledgeEdge
+	(*PutEdgeRequest)(nil),                      // 54: candace.brainspine.v1.PutEdgeRequest
+	(*PutEdgeResponse)(nil),                     // 55: candace.brainspine.v1.PutEdgeResponse
+	(*GraphRequest)(nil),                        // 56: candace.brainspine.v1.GraphRequest
+	(*GraphSnapshot)(nil),                       // 57: candace.brainspine.v1.GraphSnapshot
+	(*GetGraphRequest)(nil),                     // 58: candace.brainspine.v1.GetGraphRequest
+	(*GetGraphResponse)(nil),                    // 59: candace.brainspine.v1.GetGraphResponse
+	(*SimulationRun)(nil),                       // 60: candace.brainspine.v1.SimulationRun
+	(*SimulationArtifact)(nil),                  // 61: candace.brainspine.v1.SimulationArtifact
+	(*SimulationFrame)(nil),                     // 62: candace.brainspine.v1.SimulationFrame
+	(*SimulationFrameDimensions)(nil),           // 63: candace.brainspine.v1.SimulationFrameDimensions
+	(*SimulationFrameClocks)(nil),               // 64: candace.brainspine.v1.SimulationFrameClocks
+	(*SimulationFrames)(nil),                    // 65: candace.brainspine.v1.SimulationFrames
+	(*SimulationTraceSource)(nil),               // 66: candace.brainspine.v1.SimulationTraceSource
+	(*SimulationLogRecord)(nil),                 // 67: candace.brainspine.v1.SimulationLogRecord
+	(*SubmitSimulationRequest)(nil),             // 68: candace.brainspine.v1.SubmitSimulationRequest
+	(*SubmitSimulationResponse)(nil),            // 69: candace.brainspine.v1.SubmitSimulationResponse
+	(*InspectSimulationRequest)(nil),            // 70: candace.brainspine.v1.InspectSimulationRequest
+	(*InspectSimulationResponse)(nil),           // 71: candace.brainspine.v1.InspectSimulationResponse
+	(*ListSimulationsRequest)(nil),              // 72: candace.brainspine.v1.ListSimulationsRequest
+	(*ListSimulationsResponse)(nil),             // 73: candace.brainspine.v1.ListSimulationsResponse
+	(*RecordSimulationEventsRequest)(nil),       // 74: candace.brainspine.v1.RecordSimulationEventsRequest
+	(*RecordSimulationEventsResponse)(nil),      // 75: candace.brainspine.v1.RecordSimulationEventsResponse
+	(*CancelSimulationRequest)(nil),             // 76: candace.brainspine.v1.CancelSimulationRequest
+	(*CancelSimulationResponse)(nil),            // 77: candace.brainspine.v1.CancelSimulationResponse
+	(*ReadSimulationLogsRequest)(nil),           // 78: candace.brainspine.v1.ReadSimulationLogsRequest
+	(*ReadSimulationLogsResponse)(nil),          // 79: candace.brainspine.v1.ReadSimulationLogsResponse
+	(*RebuildSimulationTraceRequest)(nil),       // 80: candace.brainspine.v1.RebuildSimulationTraceRequest
+	(*RebuildSimulationTraceResponse)(nil),      // 81: candace.brainspine.v1.RebuildSimulationTraceResponse
+	(*SimulationProfile)(nil),                   // 82: candace.brainspine.v1.SimulationProfile
+	(*SimulationConfig)(nil),                    // 83: candace.brainspine.v1.SimulationConfig
+	(*LocalSimulationProfile)(nil),              // 84: candace.brainspine.v1.LocalSimulationProfile
+	(*LocalSimulationConfig)(nil),               // 85: candace.brainspine.v1.LocalSimulationConfig
+	(*WorkbenchTheme)(nil),                      // 86: candace.brainspine.v1.WorkbenchTheme
+	(*GetWorkbenchThemeRequest)(nil),            // 87: candace.brainspine.v1.GetWorkbenchThemeRequest
+	(*GetWorkbenchThemeResponse)(nil),           // 88: candace.brainspine.v1.GetWorkbenchThemeResponse
+	(*ReloadWorkbenchThemeRequest)(nil),         // 89: candace.brainspine.v1.ReloadWorkbenchThemeRequest
+	(*ReloadWorkbenchThemeResponse)(nil),        // 90: candace.brainspine.v1.ReloadWorkbenchThemeResponse
+	(*AgentDefinition)(nil),                     // 91: candace.brainspine.v1.AgentDefinition
+	(*AgentLangfuseConfiguration)(nil),          // 92: candace.brainspine.v1.AgentLangfuseConfiguration
+	(*AgentOpenSearchConfiguration)(nil),        // 93: candace.brainspine.v1.AgentOpenSearchConfiguration
+	(*AgentConfigurationInput)(nil),             // 94: candace.brainspine.v1.AgentConfigurationInput
+	(*AgentConfiguration)(nil),                  // 95: candace.brainspine.v1.AgentConfiguration
+	(*GetOwnAgentConfigurationRequest)(nil),     // 96: candace.brainspine.v1.GetOwnAgentConfigurationRequest
+	(*GetOwnAgentConfigurationResponse)(nil),    // 97: candace.brainspine.v1.GetOwnAgentConfigurationResponse
+	(*UpdateOwnAgentConfigurationRequest)(nil),  // 98: candace.brainspine.v1.UpdateOwnAgentConfigurationRequest
+	(*UpdateOwnAgentConfigurationResponse)(nil), // 99: candace.brainspine.v1.UpdateOwnAgentConfigurationResponse
+	(*AgentAssignmentRecipe)(nil),               // 100: candace.brainspine.v1.AgentAssignmentRecipe
+	(*AgentAssignmentPlan)(nil),                 // 101: candace.brainspine.v1.AgentAssignmentPlan
+	(*PrepareAgentAssignmentRequest)(nil),       // 102: candace.brainspine.v1.PrepareAgentAssignmentRequest
+	(*PrepareAgentAssignmentResponse)(nil),      // 103: candace.brainspine.v1.PrepareAgentAssignmentResponse
+	(*AgentAssignmentReceipt)(nil),              // 104: candace.brainspine.v1.AgentAssignmentReceipt
+	(*timestamppb.Timestamp)(nil),               // 105: google.protobuf.Timestamp
 }
 var file_candace_brainspine_v1_brainspine_proto_depIdxs = []int32{
 	0,   // 0: candace.brainspine.v1.Expression.opcode:type_name -> candace.brainspine.v1.Opcode
@@ -7500,84 +7751,88 @@ var file_candace_brainspine_v1_brainspine_proto_depIdxs = []int32{
 	21,  // 16: candace.brainspine.v1.ResearchEvent.measurement:type_name -> candace.brainspine.v1.Measurement
 	26,  // 17: candace.brainspine.v1.ResearchEvent.status:type_name -> candace.brainspine.v1.RunStatus
 	23,  // 18: candace.brainspine.v1.ResearchEvent.receipt:type_name -> candace.brainspine.v1.CommandReceipt
-	102, // 19: candace.brainspine.v1.CommandReceipt.started_at:type_name -> google.protobuf.Timestamp
-	102, // 20: candace.brainspine.v1.CommandReceipt.finished_at:type_name -> google.protobuf.Timestamp
+	105, // 19: candace.brainspine.v1.CommandReceipt.started_at:type_name -> google.protobuf.Timestamp
+	105, // 20: candace.brainspine.v1.CommandReceipt.finished_at:type_name -> google.protobuf.Timestamp
 	24,  // 21: candace.brainspine.v1.CommandReceipt.evidence:type_name -> candace.brainspine.v1.ArtifactEvidence
-	102, // 22: candace.brainspine.v1.TokenUsage.observed_at:type_name -> google.protobuf.Timestamp
+	105, // 22: candace.brainspine.v1.TokenUsage.observed_at:type_name -> google.protobuf.Timestamp
 	22,  // 23: candace.brainspine.v1.Snapshot.events:type_name -> candace.brainspine.v1.ResearchEvent
 	28,  // 24: candace.brainspine.v1.GetSnapshotResponse.snapshot:type_name -> candace.brainspine.v1.Snapshot
 	12,  // 25: candace.brainspine.v1.CompileRequest.controller:type_name -> candace.brainspine.v1.Controller
 	13,  // 26: candace.brainspine.v1.CompileResponse.program:type_name -> candace.brainspine.v1.Program
 	33,  // 27: candace.brainspine.v1.IngestDocumentRequest.document:type_name -> candace.brainspine.v1.SourceDocument
 	33,  // 28: candace.brainspine.v1.IngestDocumentResult.document:type_name -> candace.brainspine.v1.SourceDocument
-	37,  // 29: candace.brainspine.v1.IngestDocumentResult.projection:type_name -> candace.brainspine.v1.ProjectionTask
+	40,  // 29: candace.brainspine.v1.IngestDocumentResult.projection:type_name -> candace.brainspine.v1.ProjectionTask
 	35,  // 30: candace.brainspine.v1.IngestDocumentResponse.result:type_name -> candace.brainspine.v1.IngestDocumentResult
-	39,  // 31: candace.brainspine.v1.ProjectionTask.document:type_name -> candace.brainspine.v1.DocumentRequest
-	3,   // 32: candace.brainspine.v1.ProjectionTask.state:type_name -> candace.brainspine.v1.ProjectionState
-	3,   // 33: candace.brainspine.v1.ProjectionCount.state:type_name -> candace.brainspine.v1.ProjectionState
-	33,  // 34: candace.brainspine.v1.DocumentResult.document:type_name -> candace.brainspine.v1.SourceDocument
-	37,  // 35: candace.brainspine.v1.DocumentResult.projection:type_name -> candace.brainspine.v1.ProjectionTask
-	39,  // 36: candace.brainspine.v1.GetDocumentRequest.request:type_name -> candace.brainspine.v1.DocumentRequest
-	40,  // 37: candace.brainspine.v1.GetDocumentResponse.result:type_name -> candace.brainspine.v1.DocumentResult
-	33,  // 38: candace.brainspine.v1.SearchHit.document:type_name -> candace.brainspine.v1.SourceDocument
-	44,  // 39: candace.brainspine.v1.SearchResult.hits:type_name -> candace.brainspine.v1.SearchHit
-	45,  // 40: candace.brainspine.v1.SearchResponse.result:type_name -> candace.brainspine.v1.SearchResult
-	4,   // 41: candace.brainspine.v1.KnowledgeNode.kind:type_name -> candace.brainspine.v1.KnowledgeKind
-	5,   // 42: candace.brainspine.v1.KnowledgeNode.author_kind:type_name -> candace.brainspine.v1.AuthorKind
-	47,  // 43: candace.brainspine.v1.PutNodeRequest.node:type_name -> candace.brainspine.v1.KnowledgeNode
-	47,  // 44: candace.brainspine.v1.PutNodeResponse.node:type_name -> candace.brainspine.v1.KnowledgeNode
-	6,   // 45: candace.brainspine.v1.KnowledgeEdge.relation:type_name -> candace.brainspine.v1.RelationKind
-	5,   // 46: candace.brainspine.v1.KnowledgeEdge.author_kind:type_name -> candace.brainspine.v1.AuthorKind
-	50,  // 47: candace.brainspine.v1.PutEdgeRequest.edge:type_name -> candace.brainspine.v1.KnowledgeEdge
-	50,  // 48: candace.brainspine.v1.PutEdgeResponse.edge:type_name -> candace.brainspine.v1.KnowledgeEdge
-	47,  // 49: candace.brainspine.v1.GraphSnapshot.nodes:type_name -> candace.brainspine.v1.KnowledgeNode
-	50,  // 50: candace.brainspine.v1.GraphSnapshot.edges:type_name -> candace.brainspine.v1.KnowledgeEdge
-	53,  // 51: candace.brainspine.v1.GetGraphRequest.request:type_name -> candace.brainspine.v1.GraphRequest
-	54,  // 52: candace.brainspine.v1.GetGraphResponse.snapshot:type_name -> candace.brainspine.v1.GraphSnapshot
-	7,   // 53: candace.brainspine.v1.SimulationRun.simulator:type_name -> candace.brainspine.v1.Simulator
-	8,   // 54: candace.brainspine.v1.SimulationRun.executor:type_name -> candace.brainspine.v1.SimulationExecutor
-	9,   // 55: candace.brainspine.v1.SimulationRun.state:type_name -> candace.brainspine.v1.SimulationState
-	21,  // 56: candace.brainspine.v1.SimulationRun.latest_measurements:type_name -> candace.brainspine.v1.Measurement
-	58,  // 57: candace.brainspine.v1.SimulationRun.artifacts:type_name -> candace.brainspine.v1.SimulationArtifact
-	60,  // 58: candace.brainspine.v1.SimulationFrames.dimensions:type_name -> candace.brainspine.v1.SimulationFrameDimensions
-	61,  // 59: candace.brainspine.v1.SimulationFrames.clock_definition:type_name -> candace.brainspine.v1.SimulationFrameClocks
-	59,  // 60: candace.brainspine.v1.SimulationFrames.frames:type_name -> candace.brainspine.v1.SimulationFrame
-	57,  // 61: candace.brainspine.v1.SimulationTraceSource.run:type_name -> candace.brainspine.v1.SimulationRun
-	62,  // 62: candace.brainspine.v1.SimulationTraceSource.frames:type_name -> candace.brainspine.v1.SimulationFrames
-	58,  // 63: candace.brainspine.v1.SimulationTraceSource.artifacts:type_name -> candace.brainspine.v1.SimulationArtifact
-	63,  // 64: candace.brainspine.v1.SimulationLogRecord.simulation:type_name -> candace.brainspine.v1.SimulationTraceSource
-	7,   // 65: candace.brainspine.v1.SubmitSimulationRequest.simulator:type_name -> candace.brainspine.v1.Simulator
-	8,   // 66: candace.brainspine.v1.SubmitSimulationRequest.executor:type_name -> candace.brainspine.v1.SimulationExecutor
-	57,  // 67: candace.brainspine.v1.SubmitSimulationResponse.run:type_name -> candace.brainspine.v1.SimulationRun
-	57,  // 68: candace.brainspine.v1.InspectSimulationResponse.run:type_name -> candace.brainspine.v1.SimulationRun
-	57,  // 69: candace.brainspine.v1.ListSimulationsResponse.runs:type_name -> candace.brainspine.v1.SimulationRun
-	22,  // 70: candace.brainspine.v1.RecordSimulationEventsRequest.events:type_name -> candace.brainspine.v1.ResearchEvent
-	57,  // 71: candace.brainspine.v1.RecordSimulationEventsResponse.run:type_name -> candace.brainspine.v1.SimulationRun
-	57,  // 72: candace.brainspine.v1.CancelSimulationResponse.run:type_name -> candace.brainspine.v1.SimulationRun
-	57,  // 73: candace.brainspine.v1.RebuildSimulationTraceResponse.run:type_name -> candace.brainspine.v1.SimulationRun
-	7,   // 74: candace.brainspine.v1.SimulationProfile.simulator:type_name -> candace.brainspine.v1.Simulator
-	79,  // 75: candace.brainspine.v1.SimulationConfig.profiles:type_name -> candace.brainspine.v1.SimulationProfile
-	7,   // 76: candace.brainspine.v1.LocalSimulationProfile.simulator:type_name -> candace.brainspine.v1.Simulator
-	81,  // 77: candace.brainspine.v1.LocalSimulationConfig.profiles:type_name -> candace.brainspine.v1.LocalSimulationProfile
-	83,  // 78: candace.brainspine.v1.GetWorkbenchThemeResponse.theme:type_name -> candace.brainspine.v1.WorkbenchTheme
-	83,  // 79: candace.brainspine.v1.ReloadWorkbenchThemeResponse.theme:type_name -> candace.brainspine.v1.WorkbenchTheme
-	89,  // 80: candace.brainspine.v1.AgentConfigurationInput.langfuse:type_name -> candace.brainspine.v1.AgentLangfuseConfiguration
-	90,  // 81: candace.brainspine.v1.AgentConfigurationInput.opensearch:type_name -> candace.brainspine.v1.AgentOpenSearchConfiguration
-	89,  // 82: candace.brainspine.v1.AgentConfiguration.langfuse:type_name -> candace.brainspine.v1.AgentLangfuseConfiguration
-	90,  // 83: candace.brainspine.v1.AgentConfiguration.opensearch:type_name -> candace.brainspine.v1.AgentOpenSearchConfiguration
-	92,  // 84: candace.brainspine.v1.GetOwnAgentConfigurationResponse.configuration:type_name -> candace.brainspine.v1.AgentConfiguration
-	91,  // 85: candace.brainspine.v1.UpdateOwnAgentConfigurationRequest.configuration:type_name -> candace.brainspine.v1.AgentConfigurationInput
-	92,  // 86: candace.brainspine.v1.UpdateOwnAgentConfigurationResponse.configuration:type_name -> candace.brainspine.v1.AgentConfiguration
-	88,  // 87: candace.brainspine.v1.AgentAssignmentRecipe.agent:type_name -> candace.brainspine.v1.AgentDefinition
-	97,  // 88: candace.brainspine.v1.AgentAssignmentPlan.recipe:type_name -> candace.brainspine.v1.AgentAssignmentRecipe
-	97,  // 89: candace.brainspine.v1.PrepareAgentAssignmentRequest.recipe:type_name -> candace.brainspine.v1.AgentAssignmentRecipe
-	98,  // 90: candace.brainspine.v1.PrepareAgentAssignmentResponse.plan:type_name -> candace.brainspine.v1.AgentAssignmentPlan
-	98,  // 91: candace.brainspine.v1.AgentAssignmentReceipt.plan:type_name -> candace.brainspine.v1.AgentAssignmentPlan
-	92,  // [92:92] is the sub-list for method output_type
-	92,  // [92:92] is the sub-list for method input_type
-	92,  // [92:92] is the sub-list for extension type_name
-	92,  // [92:92] is the sub-list for extension extendee
-	0,   // [0:92] is the sub-list for field type_name
+	35,  // 31: candace.brainspine.v1.LearnAboutCSFResponse.ingested:type_name -> candace.brainspine.v1.IngestDocumentResult
+	48,  // 32: candace.brainspine.v1.LearnAboutCSFResponse.retrieval:type_name -> candace.brainspine.v1.SearchResult
+	39,  // 33: candace.brainspine.v1.LearnAboutCSFResponse.copilot_history:type_name -> candace.brainspine.v1.CopilotHistoryResult
+	35,  // 34: candace.brainspine.v1.CopilotHistoryResult.ingest:type_name -> candace.brainspine.v1.IngestDocumentResult
+	42,  // 35: candace.brainspine.v1.ProjectionTask.document:type_name -> candace.brainspine.v1.DocumentRequest
+	3,   // 36: candace.brainspine.v1.ProjectionTask.state:type_name -> candace.brainspine.v1.ProjectionState
+	3,   // 37: candace.brainspine.v1.ProjectionCount.state:type_name -> candace.brainspine.v1.ProjectionState
+	33,  // 38: candace.brainspine.v1.DocumentResult.document:type_name -> candace.brainspine.v1.SourceDocument
+	40,  // 39: candace.brainspine.v1.DocumentResult.projection:type_name -> candace.brainspine.v1.ProjectionTask
+	42,  // 40: candace.brainspine.v1.GetDocumentRequest.request:type_name -> candace.brainspine.v1.DocumentRequest
+	43,  // 41: candace.brainspine.v1.GetDocumentResponse.result:type_name -> candace.brainspine.v1.DocumentResult
+	33,  // 42: candace.brainspine.v1.SearchHit.document:type_name -> candace.brainspine.v1.SourceDocument
+	47,  // 43: candace.brainspine.v1.SearchResult.hits:type_name -> candace.brainspine.v1.SearchHit
+	48,  // 44: candace.brainspine.v1.SearchResponse.result:type_name -> candace.brainspine.v1.SearchResult
+	4,   // 45: candace.brainspine.v1.KnowledgeNode.kind:type_name -> candace.brainspine.v1.KnowledgeKind
+	5,   // 46: candace.brainspine.v1.KnowledgeNode.author_kind:type_name -> candace.brainspine.v1.AuthorKind
+	50,  // 47: candace.brainspine.v1.PutNodeRequest.node:type_name -> candace.brainspine.v1.KnowledgeNode
+	50,  // 48: candace.brainspine.v1.PutNodeResponse.node:type_name -> candace.brainspine.v1.KnowledgeNode
+	6,   // 49: candace.brainspine.v1.KnowledgeEdge.relation:type_name -> candace.brainspine.v1.RelationKind
+	5,   // 50: candace.brainspine.v1.KnowledgeEdge.author_kind:type_name -> candace.brainspine.v1.AuthorKind
+	53,  // 51: candace.brainspine.v1.PutEdgeRequest.edge:type_name -> candace.brainspine.v1.KnowledgeEdge
+	53,  // 52: candace.brainspine.v1.PutEdgeResponse.edge:type_name -> candace.brainspine.v1.KnowledgeEdge
+	50,  // 53: candace.brainspine.v1.GraphSnapshot.nodes:type_name -> candace.brainspine.v1.KnowledgeNode
+	53,  // 54: candace.brainspine.v1.GraphSnapshot.edges:type_name -> candace.brainspine.v1.KnowledgeEdge
+	56,  // 55: candace.brainspine.v1.GetGraphRequest.request:type_name -> candace.brainspine.v1.GraphRequest
+	57,  // 56: candace.brainspine.v1.GetGraphResponse.snapshot:type_name -> candace.brainspine.v1.GraphSnapshot
+	7,   // 57: candace.brainspine.v1.SimulationRun.simulator:type_name -> candace.brainspine.v1.Simulator
+	8,   // 58: candace.brainspine.v1.SimulationRun.executor:type_name -> candace.brainspine.v1.SimulationExecutor
+	9,   // 59: candace.brainspine.v1.SimulationRun.state:type_name -> candace.brainspine.v1.SimulationState
+	21,  // 60: candace.brainspine.v1.SimulationRun.latest_measurements:type_name -> candace.brainspine.v1.Measurement
+	61,  // 61: candace.brainspine.v1.SimulationRun.artifacts:type_name -> candace.brainspine.v1.SimulationArtifact
+	63,  // 62: candace.brainspine.v1.SimulationFrames.dimensions:type_name -> candace.brainspine.v1.SimulationFrameDimensions
+	64,  // 63: candace.brainspine.v1.SimulationFrames.clock_definition:type_name -> candace.brainspine.v1.SimulationFrameClocks
+	62,  // 64: candace.brainspine.v1.SimulationFrames.frames:type_name -> candace.brainspine.v1.SimulationFrame
+	60,  // 65: candace.brainspine.v1.SimulationTraceSource.run:type_name -> candace.brainspine.v1.SimulationRun
+	65,  // 66: candace.brainspine.v1.SimulationTraceSource.frames:type_name -> candace.brainspine.v1.SimulationFrames
+	61,  // 67: candace.brainspine.v1.SimulationTraceSource.artifacts:type_name -> candace.brainspine.v1.SimulationArtifact
+	66,  // 68: candace.brainspine.v1.SimulationLogRecord.simulation:type_name -> candace.brainspine.v1.SimulationTraceSource
+	7,   // 69: candace.brainspine.v1.SubmitSimulationRequest.simulator:type_name -> candace.brainspine.v1.Simulator
+	8,   // 70: candace.brainspine.v1.SubmitSimulationRequest.executor:type_name -> candace.brainspine.v1.SimulationExecutor
+	60,  // 71: candace.brainspine.v1.SubmitSimulationResponse.run:type_name -> candace.brainspine.v1.SimulationRun
+	60,  // 72: candace.brainspine.v1.InspectSimulationResponse.run:type_name -> candace.brainspine.v1.SimulationRun
+	60,  // 73: candace.brainspine.v1.ListSimulationsResponse.runs:type_name -> candace.brainspine.v1.SimulationRun
+	22,  // 74: candace.brainspine.v1.RecordSimulationEventsRequest.events:type_name -> candace.brainspine.v1.ResearchEvent
+	60,  // 75: candace.brainspine.v1.RecordSimulationEventsResponse.run:type_name -> candace.brainspine.v1.SimulationRun
+	60,  // 76: candace.brainspine.v1.CancelSimulationResponse.run:type_name -> candace.brainspine.v1.SimulationRun
+	60,  // 77: candace.brainspine.v1.RebuildSimulationTraceResponse.run:type_name -> candace.brainspine.v1.SimulationRun
+	7,   // 78: candace.brainspine.v1.SimulationProfile.simulator:type_name -> candace.brainspine.v1.Simulator
+	82,  // 79: candace.brainspine.v1.SimulationConfig.profiles:type_name -> candace.brainspine.v1.SimulationProfile
+	7,   // 80: candace.brainspine.v1.LocalSimulationProfile.simulator:type_name -> candace.brainspine.v1.Simulator
+	84,  // 81: candace.brainspine.v1.LocalSimulationConfig.profiles:type_name -> candace.brainspine.v1.LocalSimulationProfile
+	86,  // 82: candace.brainspine.v1.GetWorkbenchThemeResponse.theme:type_name -> candace.brainspine.v1.WorkbenchTheme
+	86,  // 83: candace.brainspine.v1.ReloadWorkbenchThemeResponse.theme:type_name -> candace.brainspine.v1.WorkbenchTheme
+	92,  // 84: candace.brainspine.v1.AgentConfigurationInput.langfuse:type_name -> candace.brainspine.v1.AgentLangfuseConfiguration
+	93,  // 85: candace.brainspine.v1.AgentConfigurationInput.opensearch:type_name -> candace.brainspine.v1.AgentOpenSearchConfiguration
+	92,  // 86: candace.brainspine.v1.AgentConfiguration.langfuse:type_name -> candace.brainspine.v1.AgentLangfuseConfiguration
+	93,  // 87: candace.brainspine.v1.AgentConfiguration.opensearch:type_name -> candace.brainspine.v1.AgentOpenSearchConfiguration
+	95,  // 88: candace.brainspine.v1.GetOwnAgentConfigurationResponse.configuration:type_name -> candace.brainspine.v1.AgentConfiguration
+	94,  // 89: candace.brainspine.v1.UpdateOwnAgentConfigurationRequest.configuration:type_name -> candace.brainspine.v1.AgentConfigurationInput
+	95,  // 90: candace.brainspine.v1.UpdateOwnAgentConfigurationResponse.configuration:type_name -> candace.brainspine.v1.AgentConfiguration
+	91,  // 91: candace.brainspine.v1.AgentAssignmentRecipe.agent:type_name -> candace.brainspine.v1.AgentDefinition
+	100, // 92: candace.brainspine.v1.AgentAssignmentPlan.recipe:type_name -> candace.brainspine.v1.AgentAssignmentRecipe
+	100, // 93: candace.brainspine.v1.PrepareAgentAssignmentRequest.recipe:type_name -> candace.brainspine.v1.AgentAssignmentRecipe
+	101, // 94: candace.brainspine.v1.PrepareAgentAssignmentResponse.plan:type_name -> candace.brainspine.v1.AgentAssignmentPlan
+	101, // 95: candace.brainspine.v1.AgentAssignmentReceipt.plan:type_name -> candace.brainspine.v1.AgentAssignmentPlan
+	96,  // [96:96] is the sub-list for method output_type
+	96,  // [96:96] is the sub-list for method input_type
+	96,  // [96:96] is the sub-list for extension type_name
+	96,  // [96:96] is the sub-list for extension extendee
+	0,   // [0:96] is the sub-list for field type_name
 }
 
 func init() { file_candace_brainspine_v1_brainspine_proto_init() }
@@ -7592,14 +7847,14 @@ func file_candace_brainspine_v1_brainspine_proto_init() {
 		(*ResearchEvent_Receipt)(nil),
 	}
 	file_candace_brainspine_v1_brainspine_proto_msgTypes[13].OneofWrappers = []any{}
-	file_candace_brainspine_v1_brainspine_proto_msgTypes[37].OneofWrappers = []any{}
+	file_candace_brainspine_v1_brainspine_proto_msgTypes[40].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_candace_brainspine_v1_brainspine_proto_rawDesc), len(file_candace_brainspine_v1_brainspine_proto_rawDesc)),
 			NumEnums:      10,
-			NumMessages:   92,
+			NumMessages:   95,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
