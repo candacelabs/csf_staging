@@ -27,10 +27,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 
 	"github.com/gin-gonic/gin"
+	copilot "github.com/github/copilot-sdk/go"
 	"github.com/guregu/null/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	dockerclient "github.com/moby/moby/client"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -51,6 +54,30 @@ const agentMCPKeyFileFlag = "agent-mcp-key-file"
 const watchReceiptFile = "receipt.json"
 const watchReceiptTemporary = "receipt.json.tmp"
 const httpServiceName = "csf"
+
+const copilotHistorySessionsToolName = "ListCopilotHistorySessions"
+
+type copilotHistorySessionLister func(ctx context.Context, filter *copilot.SessionListFilter) ([]copilot.SessionMetadata, error)
+
+type copilotHistorySessionsOutput struct {
+	Sessions []copilot.SessionMetadata `json:"sessions"`
+}
+
+func withCopilotHistorySessionsTool(list copilotHistorySessionLister) csf.Option {
+	closedWorld := false
+	return csf.WithMCPTool[copilot.SessionListFilter, copilotHistorySessionsOutput](mcp.Tool{
+		Name:        copilotHistorySessionsToolName,
+		Title:       "List Copilot history sessions",
+		Description: "Read-only metadata listing for the copied native Copilot history. It does not resume sessions, read events, send prompts or execute tools.",
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &closedWorld},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, filter copilot.SessionListFilter) (*mcp.CallToolResult, copilotHistorySessionsOutput, error) {
+		sessions, err := list(ctx, &filter)
+		if sessions == nil {
+			sessions = []copilot.SessionMetadata{}
+		}
+		return nil, copilotHistorySessionsOutput{Sessions: sessions}, err
+	})
+}
 
 // The release build supplies the operator's reachable dashboard URL. Source
 // archives retain a loopback default and do not embed a deployment identity.
@@ -160,36 +187,15 @@ func runWithStreams(input io.Reader, output io.Writer) error {
 }
 
 func serve(mode string, arguments []string) error {
-	flags := flag.NewFlagSet(mode, flag.ContinueOnError)
-	watchRoot := flags.String(watchRootFlag, "", "optional repository root for bounded in-process source checks")
-	database := flags.String("database-config", "", "private JSON file containing database url")
-	artifactsPath := flags.String("artifacts", "artifacts/cas", "content-addressed artifact directory")
-	events := flags.String("events", "events.jsonl", "event log for dashboard")
-	listen := flags.String("listen", "127.0.0.1:14111", "HTTP listen address")
-	work := flags.String("work-state", "", "reported work state for live board")
-	receipts := flags.String("receipts", "", "retained command receipt directory for inspection")
-	origin := flags.String("origin", "http://127.0.0.1:14111", "operator browser origin")
-	searchURL := flags.String("search-url", "http://127.0.0.1:19200", "OpenSearch URL")
-	searchIndex := flags.String("search-index", "brain-knowledge", "OpenSearch document index")
-	model := flags.String("embedding-model", "", "ML Commons model identity; empty means lexical")
-	workbenchDatabase := flags.String("workbench-database-config", "", "private JSON database URL for the optional Copilot Workbench")
-	workbenchRepository := flags.String("workbench-repository", "", "repository root used by Workbench sessions")
-	workbenchWorktrees := flags.String("workbench-worktrees", "", "Workbench git worktree directory")
-	workbenchUI := flags.String("workbench-ui", "", "built Workbench UI directory")
-	workbenchThemeDirectory := flags.String("workbench-theme-dir", "", "directory containing workbench-theme.css; defaults beside work-state when Workbench is mounted")
-	workbenchTraceConfig := flags.String("workbench-trace-config", "", "private generated OTLP configuration for retained Workbench traces")
-	workbenchToken := flags.String("workbench-token-file", "", "optional private Copilot token file")
-	agentMCPKeyFile := flags.String(agentMCPKeyFileFlag, "", "private bearer key for agent MCP sessions")
-	localSimulationConfig := flags.String("local-simulation-config", "", "operator-owned local Docker profiles; launch in the shared Go worker")
-	simulationConfig := flags.String("simulation-config", "", "operator-owned protobuf JSON AWS Batch profiles; absent allows local observations only")
-	if err := flags.Parse(arguments); err != nil {
+	settings, err := parseServeConfig(mode, arguments, os.LookupEnv)
+	if err != nil {
 		return err
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var agentMCPAuthenticator *csf.AgentMCPAuthenticator
-	if *agentMCPKeyFile != "" {
-		key, err := os.ReadFile(*agentMCPKeyFile)
+	if settings.agentMCPKeyFile != "" {
+		key, err := os.ReadFile(settings.agentMCPKeyFile)
 		if err != nil {
 			return fmt.Errorf("read agent MCP key: %w", err)
 		}
@@ -198,16 +204,28 @@ func serve(mode string, arguments []string) error {
 			return err
 		}
 	}
-	options := []csf.Option{csf.WithDashboard(csf.NewDashboard(*events))}
-	if *workbenchThemeDirectory == "" && *workbenchUI != "" && *work != "" {
-		*workbenchThemeDirectory = filepath.Dir(*work)
+	onboardingConfig := csf.OnboardingConfig{ConsumerRoot: settings.consumerRoot, ConsumerRevision: settings.consumerRevision}
+	options := []csf.Option{csf.WithDashboard(csf.NewDashboard(settings.events))}
+	registry := prometheus.NewRegistry()
+	if settings.emailConfiguration != "" {
+		if agentMCPAuthenticator == nil {
+			return fmt.Errorf("operator email requires the agent MCP signing key")
+		}
+		mailer, err := configuredOperatorEmail(settings.emailConfiguration, registry)
+		if err != nil {
+			return err
+		}
+		options = append(options, csf.WithEmail(mailer))
 	}
-	if *workbenchThemeDirectory != "" {
-		options = append(options, csf.WithWorkbenchThemeDirectory(*workbenchThemeDirectory))
+	if settings.workbenchThemeDirectory == "" && settings.workbenchUI != "" && settings.work != "" {
+		settings.workbenchThemeDirectory = filepath.Dir(settings.work)
+	}
+	if settings.workbenchThemeDirectory != "" {
+		options = append(options, csf.WithWorkbenchThemeDirectory(settings.workbenchThemeDirectory))
 	}
 	var simulations *csf.Simulations
-	if *database != "" {
-		content, err := os.ReadFile(*database)
+	if settings.databaseConfig != "" {
+		content, err := os.ReadFile(settings.databaseConfig)
 		if err != nil {
 			return err
 		}
@@ -235,12 +253,12 @@ func serve(mode string, arguments []string) error {
 		if err := store.Migrate(ctx); err != nil {
 			return err
 		}
-		artifacts, err := csf.NewArtifacts(*artifactsPath)
+		artifacts, err := csf.NewArtifacts(settings.artifactsPath)
 		if err != nil {
 			return err
 		}
 		defer func() { _ = artifacts.Close() }()
-		index, err := csf.ConnectOpenSearch(*searchURL, *searchIndex, *model, &http.Client{Timeout: 30 * time.Second})
+		index, err := csf.ConnectOpenSearch(settings.searchURL, settings.searchIndex, settings.embeddingModel, &http.Client{Timeout: 30 * time.Second})
 		if err != nil {
 			return err
 		}
@@ -249,8 +267,8 @@ func serve(mode string, arguments []string) error {
 		var policy *brainspinev1.SimulationConfig
 		var provider csf.IBatch
 		var logs csf.ISimulationLogs
-		if *simulationConfig != "" {
-			content, err := os.ReadFile(*simulationConfig)
+		if settings.simulationConfig != "" {
+			content, err := os.ReadFile(settings.simulationConfig)
 			if err != nil {
 				return err
 			}
@@ -270,8 +288,8 @@ func serve(mode string, arguments []string) error {
 			logs = cloudwatchlogs.NewFromConfig(config)
 		}
 		simulationOptions := []csf.SimulationOption{}
-		if *localSimulationConfig != "" {
-			content, err := os.ReadFile(*localSimulationConfig)
+		if settings.localSimulationConfig != "" {
+			content, err := os.ReadFile(settings.localSimulationConfig)
 			if err != nil {
 				return err
 			}
@@ -289,8 +307,8 @@ func serve(mode string, arguments []string) error {
 				return err
 			}
 			simulationOptions = append(simulationOptions, csf.WithLocalSimulations(local), csf.WithSimulationLogSearch(index))
-			if *workbenchTraceConfig != "" {
-				document, err := os.ReadFile(*workbenchTraceConfig)
+			if settings.workbenchTraceConfig != "" {
+				document, err := os.ReadFile(settings.workbenchTraceConfig)
 				if err != nil {
 					return err
 				}
@@ -315,6 +333,23 @@ func serve(mode string, arguments []string) error {
 	} else if mode == "initialize" {
 		return fmt.Errorf("database-config required")
 	}
+	var copilotHistoryBridge *copilotbridge.CopilotBridge
+	if settings.copilotHistorySource != "" {
+		copilotHistoryBridge, err = copilotbridge.NewCopilotBridge(ctx, copilotbridge.Config{
+			HistorySourceDirectory: settings.copilotHistorySource,
+			Logger:                 slog.Default(),
+			ShutdownTimeout:        time.Duration(copilotadapter.DefaultAdapterConfig().GetDurableTransitionTimeoutMillis()) * time.Millisecond,
+		})
+		if err != nil {
+			return err
+		}
+		onboardingConfig.CopilotHistoryReader = copilotHistoryBridge.ReadSessionHistory
+		defer func() { _ = copilotHistoryBridge.Close() }()
+	}
+	options = append(options, csf.WithOnboarding(onboardingConfig))
+	if copilotHistoryBridge != nil {
+		options = append(options, withCopilotHistorySessionsTool(copilotHistoryBridge.ListHistorySessions))
+	}
 	service, err := csf.New(options...)
 	if err != nil {
 		return err
@@ -324,17 +359,14 @@ func serve(mode string, arguments []string) error {
 		return err
 	}
 	defer workers.Close()
-	if *watchRoot != "" {
-		if *receipts == "" {
-			return fmt.Errorf("watch-root requires receipts directory")
-		}
-		watch, err := csf.NewSourceWatch(*watchRoot, csf.ImportantSourcePaths(), time.Second, func(checkContext context.Context, request csf.CheckRequest) error {
+	if settings.watchRoot != "" {
+		watch, err := csf.NewSourceWatch(settings.watchRoot, csf.ImportantSourcePaths(), time.Second, func(checkContext context.Context, request csf.CheckRequest) error {
 			receipt, checkErr := csf.CheckSourceSnapshot(checkContext, request)
 			content, err := protojson.Marshal(receipt)
 			if err != nil {
 				return err
 			}
-			directory := filepath.Join(*receipts, receipt.ReceiptId)
+			directory := filepath.Join(settings.receipts, receipt.ReceiptId)
 			if err := os.MkdirAll(directory, 0700); err != nil {
 				return err
 			}
@@ -378,10 +410,10 @@ func serve(mode string, arguments []string) error {
 	if simulations != nil {
 		group.Go(func() error { return simulations.Work(groupContext) })
 	}
-	farmOptions := []csf.FarmOption{csf.WithFarmWorkPath(*work)}
+	farmOptions := []csf.FarmOption{csf.WithFarmWorkPath(settings.work)}
 	var copilotWorkbench *workbench.Workbench
-	if *workbenchDatabase != "" {
-		content, err := os.ReadFile(*workbenchDatabase)
+	if settings.workbenchDatabase != "" {
+		content, err := os.ReadFile(settings.workbenchDatabase)
 		if err != nil {
 			return err
 		}
@@ -397,16 +429,16 @@ func serve(mode string, arguments []string) error {
 		}
 		defer func() { _ = database.Close() }()
 		token := ""
-		if *workbenchToken != "" {
-			secret, err := os.ReadFile(*workbenchToken)
+		if settings.workbenchToken != "" {
+			secret, err := os.ReadFile(settings.workbenchToken)
 			if err != nil {
 				return err
 			}
 			token = strings.TrimSpace(string(secret))
 		}
 		var traceConfig *copilotv1.TraceExportConfig
-		if *workbenchTraceConfig != "" {
-			document, err := os.ReadFile(*workbenchTraceConfig)
+		if settings.workbenchTraceConfig != "" {
+			document, err := os.ReadFile(settings.workbenchTraceConfig)
 			if err != nil {
 				return err
 			}
@@ -415,17 +447,17 @@ func serve(mode string, arguments []string) error {
 				return fmt.Errorf("invalid Workbench trace configuration")
 			}
 		}
-		mcpServers, err := workbenchMCPServers(*origin, traceConfig)
+		mcpServers, err := workbenchMCPServers(settings.origin, traceConfig)
 		if err != nil {
 			return err
 		}
 		bridgeConfig := copilotbridge.Config{
-			GitHubToken: token, WorkingDirectory: *workbenchRepository, Logger: slog.Default(),
+			GitHubToken: token, WorkingDirectory: settings.workbenchRepository, Logger: slog.Default(),
 			ShutdownTimeout: time.Duration(copilotadapter.DefaultAdapterConfig().GetDurableTransitionTimeoutMillis()) * time.Millisecond,
 			MCPServers:      mcpServers,
 		}
 		if agentMCPAuthenticator != nil {
-			bridgeConfig.MCPServerResolver = workbenchMCPServerResolver(*origin, traceConfig, agentMCPAuthenticator)
+			bridgeConfig.MCPServerResolver = workbenchMCPServerResolver(settings.origin, traceConfig, agentMCPAuthenticator)
 		}
 		bridge, err := copilotbridge.NewCopilotBridge(ctx, bridgeConfig)
 		if err != nil {
@@ -437,8 +469,8 @@ func serve(mode string, arguments []string) error {
 			return err
 		}
 		copilotWorkbench, err = workbench.NewWorkbench(ctx, database, workbench.WithBridge(bridge),
-			workbench.WithRepository(*workbenchRepository), workbench.WithWorktrees(*workbenchWorktrees),
-			workbench.WithTaskContinuity(tasks), workbench.WithKanbanOrigins(strings.TrimRight(*origin, "/")))
+			workbench.WithRepository(settings.workbenchRepository), workbench.WithWorktrees(settings.workbenchWorktrees),
+			workbench.WithTaskContinuity(tasks), workbench.WithKanbanOrigins(strings.TrimRight(settings.origin, "/")))
 		if err != nil {
 			return err
 		}
@@ -452,8 +484,8 @@ func serve(mode string, arguments []string) error {
 		if err := copilotWorkbench.Register(engine); err != nil {
 			return err
 		}
-		if *workbenchUI != "" {
-			workbench.MountUI(engine, *workbenchUI)
+		if settings.workbenchUI != "" {
+			workbench.MountUI(engine, settings.workbenchUI)
 		}
 		if traceConfig != nil {
 			exporter, err := copilotadapter.NewTraceExporter(copilotWorkbench.Store, traceConfig)
@@ -521,15 +553,15 @@ func serve(mode string, arguments []string) error {
 			return agents, nil
 		}))
 	}
-	inspectionOptions := []csf.InspectionOption{csf.WithInspectionReceipts(*receipts), csf.WithInspectionProjectionWorkers(workers)}
+	inspectionOptions := []csf.InspectionOption{csf.WithInspectionRegistry(registry), csf.WithInspectionReceipts(settings.receipts), csf.WithInspectionProjectionWorkers(workers)}
 	if simulations != nil {
 		inspectionOptions = append(inspectionOptions, csf.WithInspectionSimulations(simulations))
 	}
 	if copilotWorkbench != nil {
 		inspectionOptions = append(inspectionOptions, csf.WithInspectionTelemetry(copilotWorkbench.Adapter.Telemetry))
 	}
-	if *work != "" {
-		farm, err := csf.NewFarmDashboard([]string{*origin, "http://127.0.0.1:14111", "http://localhost:14111"}, farmOptions...)
+	if settings.work != "" {
+		farm, err := csf.NewFarmDashboard([]string{settings.origin, "http://127.0.0.1:14111", "http://localhost:14111"}, farmOptions...)
 		if err != nil {
 			return err
 		}
@@ -542,14 +574,14 @@ func serve(mode string, arguments []string) error {
 		farm.Register(engine)
 		inspectionOptions = append(inspectionOptions, csf.WithInspectionSnapshot(farm.Snapshot), csf.WithInspectionBrowserConnections(farm.ActiveConnections))
 	} else {
-		csf.NewDashboard(*events).Register(engine)
+		csf.NewDashboard(settings.events).Register(engine)
 	}
 	csf.NewInspection(inspectionOptions...).Register(engine)
 	engine.Any("/mcp", gin.WrapH(service.MCPHandler()))
 	if agentMCPAuthenticator != nil {
 		engine.Any(workbenchAgentMCPPath, gin.WrapH(service.AgentMCPHandler(agentMCPAuthenticator)))
 	}
-	server := httpserver.NewStreamingServer(*listen, engine)
+	server := httpserver.NewStreamingServer(settings.listen, engine)
 	ready := make(chan struct{})
 	server.BaseContext = func(listener net.Listener) context.Context { close(ready); return groupContext }
 	// Start HTTP before restoring sessions so their shared MCP transport is reachable.
@@ -567,6 +599,6 @@ func serve(mode string, arguments []string) error {
 			return copilotWorkbench.Adapter.RunSchedules(groupContext)
 		})
 	}
-	fmt.Fprintln(os.Stderr, "CSF HTTP, MCP and optional Workbench listening on", *listen)
+	fmt.Fprintln(os.Stderr, "CSF HTTP, MCP and optional Workbench listening on", settings.listen)
 	return group.Wait()
 }

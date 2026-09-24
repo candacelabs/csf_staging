@@ -16,6 +16,8 @@ plugin_dir="$(mktemp -d /tmp/candace-public-liquid-plugin.XXXXXX)"
 (cd "${module_root}" && go build -mod=readonly -o "${plugin_dir}/protoc-gen-liquidproto" ./pkg/liquidproto/cmd/protoc-gen-liquidproto)
 public_schemas=(
   candace/telemetry/v1/telemetry.proto
+  candace/provenance/v1/receipt.proto
+  candace/email/v1/email.proto
   candace/candaceos/v1/app_source.proto
   candace/candaceos/v1/node_control.proto
   candace/candaceos/v1/control_runtime.proto

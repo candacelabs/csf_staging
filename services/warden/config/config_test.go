@@ -35,6 +35,7 @@ var _ = Describe("config Load", func() {
 		Expect(cfg.Bind).To(Equal(":7717"))
 		Expect(cfg.DataDir).To(Equal("/var/lib/warden"))
 		Expect(cfg.LogLevel).To(Equal("info"))
+		Expect(cfg.LeaderID).To(BeEmpty(), "empty leader_id retains legacy behavior")
 
 		want := TimingConfig{
 			HeartbeatInterval:  1 * time.Second,
@@ -66,6 +67,7 @@ var _ = Describe("config Load", func() {
 	It("applies YAML overrides on top of defaults", func() {
 		yamlBody := `
 node_id: node-c
+leader_id: node-b
 bind: "0.0.0.0:9999"
 data_dir: /data/warden
 log_level: debug
@@ -89,6 +91,7 @@ notify:
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(cfg.NodeID).To(Equal("node-c"))
+		Expect(cfg.LeaderID).To(Equal("node-b"))
 		Expect(cfg.Bind).To(Equal("0.0.0.0:9999"))
 		Expect(cfg.DataDir).To(Equal("/data/warden"))
 		Expect(cfg.LogLevel).To(Equal("debug"))
@@ -108,6 +111,7 @@ notify:
 	It("lets env override YAML", func() {
 		yamlBody := `
 node_id: node-c
+leader_id: node-c
 bind: "203.0.113.24:1111"
 log_level: warn
 timing:
@@ -120,6 +124,7 @@ notify:
 			envNodeID:            "node-b",
 			envBind:              "203.0.113.28:2222",
 			envLogLevel:          "error",
+			envLeaderID:          "node-b",
 			envHeartbeatInterval: "3s",
 			envNotifyMode:        "smtp",
 			envSMTPHost:          "smtp.gmail.com",
@@ -130,6 +135,7 @@ notify:
 		Expect(cfg.NodeID).To(Equal("node-b"))
 		Expect(cfg.Bind).To(Equal("203.0.113.28:2222"))
 		Expect(cfg.LogLevel).To(Equal("error"))
+		Expect(cfg.LeaderID).To(Equal("node-b"))
 		Expect(cfg.Timing.HeartbeatInterval).To(Equal(3 * time.Second))
 		Expect(cfg.Notify.Mode).To(Equal("smtp"))
 	})
@@ -355,6 +361,12 @@ var _ = Describe("config Validate", func() {
 			c.Notify.File = ""
 		}, "requires file"),
 		Entry("invalid mode", func(c *Config) { c.Notify.Mode = "carrier-pigeon" }, "invalid"),
+		Entry("unknown configured leader", func(c *Config) { c.LeaderID = "ghost" }, "leader_id \"ghost\" is not present in peers"),
+		Entry("configured leader with dynamic discovery", func(c *Config) {
+			c.LeaderID = "node-a"
+			c.Discovery.Mode = DiscoveryModeFile
+			c.Discovery.File = "/tmp/roster.json"
+		}, "leader_id requires discovery.mode=static"),
 	)
 
 	// TestValidateDoesNotRequirePassword
@@ -370,6 +382,26 @@ var _ = Describe("config Validate", func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cfg.Validate()).To(Succeed(), "password not required")
+	})
+})
+
+var _ = Describe("configured leader resolution", func() {
+	It("rejects an unknown configured leader from YAML", func() {
+		p := writeTemp("unknown-leader.yaml", "node_id: node-a\nleader_id: ghost\npeers:\n  - id: node-a\n    addr: 203.0.113.11:7717\n  - id: node-b\n    addr: 203.0.113.12:7717\n")
+		cfg, err := Load(p, envMap(nil))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.Validate()).To(MatchError(ContainSubstring("leader_id \"ghost\" is not present in peers")))
+	})
+
+	It("reads WARDEN_LEADER_ID and rejects an unknown configured leader", func() {
+		cfg, err := Load("", envMap(map[string]string{
+			envNodeID:   "node-a",
+			envPeers:    testPeers,
+			envLeaderID: "ghost",
+		}))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.LeaderID).To(Equal("ghost"))
+		Expect(cfg.Validate()).To(MatchError(ContainSubstring("leader_id \"ghost\" is not present in peers")))
 	})
 })
 

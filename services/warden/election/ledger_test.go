@@ -69,6 +69,21 @@ func ledgerLeader(t iHarnessT) *Manager {
 }
 
 var _ = Describe("election regression ledger", func() {
+	It("rejects fixed-leader mode combined with discovery", func() {
+		tim := defaultTimings()
+		cfg := Config{
+			Self:               warden.Node{ID: "a", Addr: "a"},
+			Peers:              ledgerNodes("a", "b", "c"),
+			LeaderID:           "b",
+			HeartbeatInterval:  tim.Heartbeat,
+			ElectionTimeoutMin: tim.ETMin,
+			ElectionTimeoutMax: tim.ETMax,
+			Discoverer:         ledgerDisc{},
+		}
+		_, err := NewManager(cfg, stubTransport(), store.NewMemStore(), testclock.New(time.Unix(0, 0)))
+		Expect(err).To(MatchError(ErrLeaderDiscovery))
+	})
+
 	// TestDuplicateVoteGrantCannotFormMajority: drives onVoteResult directly
 	// (white-box, loop not running): in a 5-voter cluster (quorum 3), the same
 	// voter's grant replayed any number of times contributes exactly one vote.
@@ -341,7 +356,7 @@ var _ = Describe("election regression ledger", func() {
 		defer func() { cancel(); <-done }()
 
 		evil := warden.Membership{Version: 99, CreatedInTerm: 5, Voters: ledgerNodes("a", "mallory")}
-		resp := m.HandleHeartbeat(context.Background(), warden.HeartbeatRequest{
+		resp := m.HandleHeartbeat(heartbeatContext(context.Background(), "b"), warden.HeartbeatRequest{
 			Term: 5, LeaderID: "b", Membership: &evil,
 		})
 		Expect(resp.OK).To(BeFalse(), "stale-term heartbeat must be rejected")

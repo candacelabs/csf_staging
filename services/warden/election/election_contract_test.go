@@ -21,6 +21,7 @@ import (
 
 	"github.com/candacelabs/csf/services/warden"
 	"github.com/candacelabs/csf/services/warden/election"
+	"github.com/candacelabs/csf/services/warden/internal/transportidentity"
 	"github.com/candacelabs/csf/services/warden/store"
 	"github.com/candacelabs/csf/services/warden/testclock"
 )
@@ -91,11 +92,31 @@ func runManager(m *election.Manager) (stop func()) {
 	}
 }
 
+func heartbeatContext(senderAddr string) context.Context {
+	return transportidentity.WithPeerAddress(context.Background(), senderAddr)
+}
+
 func newManager(self string, peers []warden.Node, tr warden.ITransport, st warden.IStore, clock warden.IClock) *election.Manager {
 	m, err := election.NewManager(election.Config{
 		Self:               warden.Node{ID: warden.NodeID(self), Addr: "127.0.0.1:0"},
 		Peers:              peers,
 		HeartbeatInterval:  10 * time.Second, // large so its ticker never confounds timing specs
+		ElectionTimeoutMin: 2 * time.Second,
+		ElectionTimeoutMax: 4 * time.Second,
+		RPCTimeout:         500 * time.Millisecond,
+	}, tr, st, clock)
+	Expect(err).NotTo(HaveOccurred())
+	return m
+}
+
+func newFixedManager(self string, leader warden.NodeID, peers []warden.Node, tr warden.ITransport, st warden.IStore, clock warden.IClock) *election.Manager {
+	m, err := election.NewManager(election.Config{
+		Self:               warden.Node{ID: warden.NodeID(self), Addr: "127.0.0.1:0"},
+		Peers:              peers,
+		LeaderID:           leader,
+		HeartbeatInterval:  10 * time.Second,
+		SuspectAfter:       time.Second,
+		DeadAfter:          3 * time.Second,
 		ElectionTimeoutMin: 2 * time.Second,
 		ElectionTimeoutMax: 4 * time.Second,
 		RPCTimeout:         500 * time.Millisecond,
@@ -133,6 +154,61 @@ var _ = Describe("NewManager construction validation", func() {
 		Expect(err).To(MatchError(election.ErrNoStore))
 		_, err = election.NewManager(cfg, tr, st, nil)
 		Expect(err).To(MatchError(election.ErrNoClock))
+	})
+
+	It("rejects a fixed leader absent from Peers", func() {
+		cfg := election.Config{Self: warden.Node{ID: "a", Addr: "h:1"}, Peers: valid, LeaderID: "missing"}
+		_, err := election.NewManager(cfg, tr, st, ck)
+		Expect(err).To(MatchError(ContainSubstring(election.ErrLeaderMissing.Error())))
+	})
+})
+
+var _ = Describe("Fixed leader mode", func() {
+	It("never lets a follower campaign after the configured leader is silent", func() {
+		clock := testclock.New(clockStart)
+		m := newFixedManager("a", "b", nodes("a", "b", "c"), newFakeTransport("c"), store.NewMemStore(), clock)
+		stop := runManager(m)
+		defer stop()
+
+		clock.BlockUntilTimers(3)
+		clock.Advance(10 * time.Second)
+		v := m.View()
+		Expect(v.Role).To(Equal(warden.RoleFollower))
+		Expect(v.LeaderID).To(Equal(warden.NodeID("b")))
+		Expect(v.ElectionsStarted).To(BeZero())
+		Expect(v.Source).To(Equal(warden.NodeID("a")))
+		Expect(v.Authoritative).To(BeFalse())
+	})
+
+	It("allows only the configured leader to campaign through the existing quorum", func() {
+		clock := testclock.New(clockStart)
+		m := newFixedManager("b", "b", nodes("a", "b", "c"), newFakeTransport("a"), store.NewMemStore(), clock)
+		stop := runManager(m)
+		defer stop()
+
+		clock.BlockUntilTimers(3)
+		clock.Advance(5 * time.Second)
+		Eventually(func() warden.Role { return m.View().Role }, "2s", "10ms").
+			Should(Equal(warden.RoleLeader))
+	})
+
+	It("rejects high-term non-leader votes and heartbeats before persistence", func() {
+		st := store.NewMemStore()
+		clock := testclock.New(clockStart)
+		m := newFixedManager("a", "b", nodes("a", "b", "c"), newFakeTransport(), st, clock)
+		stop := runManager(m)
+		defer stop()
+
+		vote := m.HandleVote(context.Background(), warden.VoteRequest{Term: 99, CandidateID: "c"})
+		Expect(vote.Granted).To(BeFalse())
+		Expect(vote.Term).To(BeZero())
+		heartbeat := m.HandleHeartbeat(heartbeatContext("127.0.0.1:0"), warden.HeartbeatRequest{Term: 99, LeaderID: "c"})
+		Expect(heartbeat.OK).To(BeFalse())
+		Expect(heartbeat.Term).To(BeZero())
+		_, ok, err := st.Load()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(ok).To(BeFalse())
+		Expect(m.View().Term).To(BeZero())
 	})
 })
 
@@ -185,7 +261,7 @@ var _ = Describe("Vote safety", func() {
 
 	It("rejects a vote request for a stale term, echoing the current term", func() {
 		// Adopt term 10 via a heartbeat.
-		Expect(m.HandleHeartbeat(context.Background(), warden.HeartbeatRequest{Term: 10, LeaderID: "b"}).OK).To(BeTrue())
+		Expect(m.HandleHeartbeat(heartbeatContext("127.0.0.1:0"), warden.HeartbeatRequest{Term: 10, LeaderID: "b"}).OK).To(BeTrue())
 		resp := m.HandleVote(context.Background(), warden.VoteRequest{Term: 5, CandidateID: "c"})
 		Expect(resp.Granted).To(BeFalse())
 		Expect(resp.Term).To(Equal(warden.Term(10)))
@@ -209,7 +285,7 @@ var _ = Describe("Term monotonicity via heartbeats", func() {
 	AfterEach(func() { stop() })
 
 	It("accepts a heartbeat with a higher term and records the leader", func() {
-		resp := m.HandleHeartbeat(context.Background(), warden.HeartbeatRequest{Term: 3, LeaderID: "b"})
+		resp := m.HandleHeartbeat(heartbeatContext("127.0.0.1:0"), warden.HeartbeatRequest{Term: 3, LeaderID: "b"})
 		Expect(resp.OK).To(BeTrue())
 		Expect(resp.Term).To(Equal(warden.Term(3)))
 		v := m.View()
@@ -219,8 +295,8 @@ var _ = Describe("Term monotonicity via heartbeats", func() {
 	})
 
 	It("rejects a stale heartbeat with OK=false and the newer term", func() {
-		Expect(m.HandleHeartbeat(context.Background(), warden.HeartbeatRequest{Term: 10, LeaderID: "b"}).OK).To(BeTrue())
-		resp := m.HandleHeartbeat(context.Background(), warden.HeartbeatRequest{Term: 4, LeaderID: "c"})
+		Expect(m.HandleHeartbeat(heartbeatContext("127.0.0.1:0"), warden.HeartbeatRequest{Term: 10, LeaderID: "b"}).OK).To(BeTrue())
+		resp := m.HandleHeartbeat(heartbeatContext("127.0.0.1:0"), warden.HeartbeatRequest{Term: 4, LeaderID: "c"})
 		Expect(resp.OK).To(BeFalse())
 		Expect(resp.Term).To(Equal(warden.Term(10)))
 	})
@@ -235,7 +311,7 @@ var _ = Describe("Term monotonicity via heartbeats", func() {
 				{Node: warden.Node{ID: "c", Addr: "127.0.0.1:0"}, Status: warden.StatusAlive},
 			},
 		}
-		Expect(m.HandleHeartbeat(context.Background(), warden.HeartbeatRequest{Term: 3, LeaderID: "b", View: leaderView}).OK).To(BeTrue())
+		Expect(m.HandleHeartbeat(heartbeatContext("127.0.0.1:0"), warden.HeartbeatRequest{Term: 3, LeaderID: "b", View: leaderView}).OK).To(BeTrue())
 		v := m.View()
 		// The follower re-badges the cached leader view as its own identity but
 		// keeps it marked authoritative and leader-sourced.

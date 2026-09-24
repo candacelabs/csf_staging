@@ -1,4 +1,26 @@
-# gotth-live
+<div align="center">
+  <img src="../../docs/assets/gotth-live-logo.svg" width="590" alt="gotth-live: even robots go through a gotth phase">
+  <p><b>Server-driven live user interfaces from Go. State and rendering stay in your process; the browser holds one WebSocket per tab.</b></p>
+  <p>
+    <a href="../../LICENSE"><img src="../../docs/assets/badge-license.svg" alt="license: Apache-2.0"></a>
+    <a href="#5-getting-started"><img src="../../docs/assets/badge-go.svg" alt="Go: 1.26"></a>
+    <a href="#1-introduction"><img src="../../docs/assets/badge-status.svg" alt="status: developer preview"></a>
+  </p>
+  <p><i>Part of CSF's web layer. Developer preview: v0.1 makes no compatibility commitment.</i></p>
+  <p>
+    <a href="#2-the-smallest-application"><b>Smallest application</b></a> ·
+    <a href="#3-one-interaction-end-to-end"><b>One interaction</b></a> ·
+    <a href="#4-what-it-costs"><b>What it costs</b></a> ·
+    <a href="docs/quickstart.md"><b>Quickstart</b></a> ·
+    <a href="docs/README.md"><b>Docs index</b></a> ·
+    <a href="docs/api-surface.md"><b>API surface</b></a> ·
+    <a href="../../examples/gotth"><b>Examples</b></a>
+  </p>
+</div>
+
+<hr>
+
+## 1. Introduction
 
 Server-driven live user interfaces from Go. Your state and your rendering stay
 in the Go process; the browser holds one WebSocket per tab; interactions travel
@@ -9,6 +31,18 @@ is compiled into your binary and served by the same handler that serves the
 connection, so there is no CDN and no npm. The only generator on your path is
 templ, compiling your own views.
 
+gotth-live belongs to [CSF](../../csf/README.md)'s web layer and runs inside
+the process of the application that mounts it; it is a library, not an
+application of its own. Widgets from [`pkg/widget`](../widget) exist only
+within gotth-live, as typed components of a gotth-live host.
+
+<p align="center">
+  <img src="../../docs/assets/gotth-live-at-a-glance.svg" width="900" alt="A browser tab with one delegated listener and the embedded client runtime exchanges event and patch frames over one WebSocket with a session goroutine inside the application's Go process. That goroutine checks the events allowlist, calls Authorize and the pure Reduce, performs effects at the actor boundary, and renders only dirty templ fragments.">
+</p>
+
+*A hand-drawn overview of [section 3](#3-one-interaction-end-to-end), which is
+the step-by-step account.*
+
 **It is v0.1.** The API makes no compatibility commitment yet. It ships inside
 the `github.com/candacelabs/csf` module; pin an `export-<sha12>` snapshot as
 described in the [consumer guide](../../docs/extending.md), or use a local
@@ -16,9 +50,7 @@ described in the [consumer guide](../../docs/extending.md), or use a local
 helpers are ledgered but not implemented; their documentation identifies those
 limits.
 
----
-
-## The smallest application
+## 2. The smallest application
 
 One fragment, one event. This is the counter from
 [the quickstart](docs/quickstart.md), where the two files are given whole:
@@ -102,9 +134,7 @@ in 2 m 12 s: [`docs/qa/phase-4-docs-alone.md`](docs/qa/phase-4-docs-alone.md).
 The line half and what remains of it:
 [`docs/gates/phase-4.md`](docs/gates/phase-4.md) §4.2.
 
----
-
-## One interaction, end to end
+## 3. One interaction, end to end
 
 That `+1` button carries a `data-gotth-on` attribute, and one delegated
 listener in the client runtime turns a click on it into an event frame. Nothing
@@ -133,9 +163,7 @@ before the reducer for every event. `Reduce` is pure and cannot reach your
 stores — it returns effects and finds out the result the same way every other
 connected tab does, which is what makes two tabs unable to disagree.
 
----
-
-## What it costs
+## 4. What it costs
 
 The trade, from PRD §1.3: **spend server RAM, server CPU and one network round
 trip per interaction; save the entire client state layer, its build toolchain,
@@ -155,9 +183,7 @@ effects that commit outside the process and cannot be made idempotent,
 interactions that need feedback faster than a round trip, and the gaps the
 benchmark records as wins for the alternative.
 
----
-
-## Getting started
+## 5. Getting started
 
 - **Go 1.26 or newer** (`go.mod` declares `go 1.26.0`). Nothing else is needed
   to build the library.
@@ -185,9 +211,7 @@ Then:
 | [`docs/api-surface.md`](docs/api-surface.md) | Every exported symbol, its stability, and a changelog of surface changes. |
 | [`examples/gotth/`](../../examples/gotth) | Three complete applications — [counter](../../examples/gotth/counter/README.md), [chat](../../examples/gotth/chat), [dashboard](../../examples/gotth/dashboard) — packages of this same module, each `go run .` with no generator installed. |
 
----
-
-## What is in this tree
+## 6. What is in this tree
 
 | Path | What it is |
 |---|---|
@@ -199,3 +223,8 @@ Then:
 
 Dependencies, what each buys and what writing it in-house would cost:
 [`docs/dependencies.md`](docs/dependencies.md).
+
+## License
+
+First-party source is Apache-2.0, as part of the `github.com/candacelabs/csf`
+module. See [`LICENSE`](../../LICENSE).

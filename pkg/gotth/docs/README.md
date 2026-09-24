@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="../../../docs/assets/gotth-live-logo.svg" width="590" alt="gotth-live: even robots go through a gotth phase">
+</div>
+
 # gotth-live documentation
 
 gotth-live serves server-driven live user interfaces from Go: your state and

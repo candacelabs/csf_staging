@@ -1,4 +1,4 @@
-// Package ifacereturn reports every function and method declaration through
+// Package ifacereturn reports handwritten function and method declarations through
 // whose results an interface reaches a caller.
 //
 // # Running it
@@ -20,8 +20,7 @@
 // concrete implementations, only accept interfaces". The narrow lane is a
 // lexical gate that blocks CI and deliberately reports only a receiverless
 // function returning a bare, repository-declared, I-prefixed interface — five
-// restrictions that exist so that every finding has a fix. This lane has one
-// exemption and no restrictions: it is type-aware
+// restrictions that exist so that every finding has a fix. This lane is type-aware
 // (go/types answers "is this an interface" exactly, where a lexer can only
 // guess), it reads methods as well as functions, and it reports stdlib and
 // third-party interfaces the lexer cannot see.
@@ -34,7 +33,8 @@
 // if there are any interface return types and flags them". Keeping the ruled
 // cases visible is what the lane is for, so it flags and never blocks, and a
 // ruled case is answered in the rule's own exceptions record rather than
-// silenced here. There is no marker comment and no exclusion list.
+// silenced here. Generated files are excluded using Go's standard generated
+// header convention. They still contribute types when checking handwritten code.
 //
 // Since 2026-09-03 it also descends: a result that is a struct, or a pointer,
 // slice, array, map or channel of one, is walked field by field, and an
@@ -71,7 +71,7 @@ import (
 )
 
 // Doc is the analyzer's one-line description, and the text `-help` prints.
-const Doc = "report every function or method result whose declared type is an interface (house rule CS-8, flagging lane; error is the only exemption)"
+const Doc = "report handwritten function or method results whose declared type is an interface (house rule CS-8, flagging lane; error is the only type exemption)"
 
 // Finding is one result position through which an interface reaches a caller.
 type Finding struct {
@@ -154,8 +154,9 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// Inspect walks every function and method declaration in files and returns one
-// Finding per interface-typed result, in source order.
+// Inspect walks handwritten function and method declarations in files and returns
+// one Finding per interface-typed result, in source order. Generated files remain
+// available to the type checker but receive no findings.
 //
 // info must be the type information for those files; a result whose type
 // cannot be resolved is skipped rather than guessed at, because a lint that
@@ -173,6 +174,9 @@ func Inspect(files []*ast.File, info *types.Info) []Finding {
 func InspectIn(files []*ast.File, info *types.Info, scope *types.Package) []Finding {
 	var findings []Finding
 	for _, file := range files {
+		if ast.IsGenerated(file) {
+			continue
+		}
 		for _, declaration := range file.Decls {
 			function, ok := declaration.(*ast.FuncDecl)
 			if !ok || function.Type == nil || function.Type.Results == nil {

@@ -51,6 +51,16 @@ type Inspection struct {
 
 type InspectionOption func(inspection *Inspection)
 
+// WithInspectionRegistry shares the host's registry with optional capabilities.
+// The host owns this registry and must not register Go/process collectors twice.
+func WithInspectionRegistry(registry *prometheus.Registry) InspectionOption {
+	return func(inspection *Inspection) {
+		if registry != nil {
+			inspection.registry = registry
+		}
+	}
+}
+
 // WithInspectionBrowserConnections samples the live board's connection registry.
 // Without a source the series is absent, rather than reporting a measured zero.
 func WithInspectionBrowserConnections(source func() int) InspectionOption {

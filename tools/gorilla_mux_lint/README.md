@@ -1,8 +1,8 @@
 # Gorilla mux dependency policy
 
 The public export's `tools/gorilla_mux_lint` owns the shared dependency checker.
-The infrastructure monorepo mirrors it under its root `tools/gorilla_mux_lint`;
-edit the public owner under `candace/` and regenerate that compatibility copy.
+The infrastructure monorepo imports this same source and BUILD definition through
+`@csf//tools/gorilla_mux_lint`; it maintains no compatibility copy.
 
 In the infrastructure monorepo, this policy is part of the unified house-lint
 gate. The canonical complete check runs the native regression suite and scans for forbidden dependencies
@@ -44,7 +44,7 @@ launcher executes the resulting Linux binary on the host, so a compatible
 Linux host is required.
 
 The unified house-lint runner imports this same OCaml checker as its
-`DEPENDENCIES` rule. Its `--test` mode runs `//tools/gorilla_mux_lint:checker_test`
+`DEPENDENCIES` rule. Its `--test` mode runs `@csf//tools/gorilla_mux_lint:checker_test`
 before scanning. The Go style workflow invokes the unified runner once, and
 `candace package check` invokes it before Go tooling regardless of selected
 package paths. The focused compatibility command is useful when investigating

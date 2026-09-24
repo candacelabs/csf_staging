@@ -2,15 +2,56 @@ package election
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/candacelabs/csf/services/warden"
 	"github.com/candacelabs/csf/services/warden/store"
+	"github.com/candacelabs/csf/services/warden/testclock"
 )
 
 var _ = Describe("cluster view propagation", func() {
+	It("ages only the configured leader from startup while preserving zero LastSeen", func() {
+		clk := testclock.New(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+		cfg := Config{
+			Self:               warden.Node{ID: "a", Addr: "a"},
+			Peers:              []warden.Node{{ID: "a", Addr: "a"}, {ID: "b", Addr: "b"}, {ID: "c", Addr: "c"}},
+			LeaderID:           "b",
+			HeartbeatInterval:  100 * time.Millisecond,
+			ElectionTimeoutMin: 300 * time.Millisecond,
+			ElectionTimeoutMax: 600 * time.Millisecond,
+			SuspectAfter:       time.Second,
+			DeadAfter:          3 * time.Second,
+			RPCTimeout:         50 * time.Millisecond,
+		}
+		m, err := NewManager(cfg, stubTransport(), store.NewMemStore(), clk)
+		Expect(err).NotTo(HaveOccurred())
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan error, 1)
+		go func() { done <- m.Run(ctx) }()
+		defer func() { cancel(); Expect(<-done).To(Succeed()) }()
+		clk.BlockUntilTimers(3)
+
+		clk.Advance(4 * time.Second)
+		v := m.View()
+		Expect(v.Source).To(Equal(warden.NodeID("a")))
+		Expect(v.Authoritative).To(BeFalse())
+		Expect(v.Role).To(Equal(warden.RoleFollower))
+		Expect(v.ElectionsStarted).To(BeZero())
+		for _, peer := range v.Peers {
+			switch peer.Node.ID {
+			case "b":
+				Expect(peer.Status).To(Equal(warden.StatusDead))
+				Expect(peer.LastSeen).To(BeZero())
+			case "c":
+				Expect(peer.Status).To(Equal(warden.StatusUnknown))
+				Expect(peer.LastSeen).To(BeZero())
+			}
+		}
+	})
+
 	// TestFollowersReceiveAuthoritativeView: in a running cluster, every
 	// follower's view is the leader's authoritative view adapted to the
 	// follower's own identity.
@@ -56,7 +97,7 @@ var _ = Describe("cluster view propagation", func() {
 		}
 
 		// A heartbeat carrying the leader's view makes our view authoritative.
-		s.m.HandleHeartbeat(ctx, warden.HeartbeatRequest{Term: 1, LeaderID: "b", View: &leaderView})
+		s.m.HandleHeartbeat(heartbeatContext(ctx, "b"), warden.HeartbeatRequest{Term: 1, LeaderID: "b", View: &leaderView})
 		v := s.m.View()
 		Expect(v.Authoritative).To(BeTrue(), "after view-bearing heartbeat, view should be authoritative: %+v", v)
 		Expect(v.Source).To(Equal(warden.NodeID("b")))
@@ -70,7 +111,7 @@ var _ = Describe("cluster view propagation", func() {
 		step := s.m.cfg.ElectionTimeoutMin / 2
 		for s.clock.Now().Before(freshDeadline.Add(step)) {
 			s.clock.Advance(step)
-			s.m.HandleHeartbeat(ctx, warden.HeartbeatRequest{Term: 1, LeaderID: "b", View: nil})
+			s.m.HandleHeartbeat(heartbeatContext(ctx, "b"), warden.HeartbeatRequest{Term: 1, LeaderID: "b", View: nil})
 		}
 
 		v = s.m.View()

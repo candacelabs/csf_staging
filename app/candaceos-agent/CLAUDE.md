@@ -51,8 +51,9 @@ out or merging them into the read-only workspace. It then rejects links and
 special files, independently verifies the approved digest, seals the snapshot
 read-only, and runs Compose only there. The snapshot must contain one of `compose.yaml`,
 `compose.yml`, `docker-compose.yaml`, or `docker-compose.yml`. `app` is the
-Compose service name; `project` is the Compose project name. Stops use the
-persisted Compose identity and do not require source files to remain present.
+Compose service name; `project` is the Compose project name. `STOPPED`
+assignments are unsupported and fail closed: the agent has no approved Compose
+stop mutation.
 
 The preflight is always:
 
@@ -60,10 +61,10 @@ The preflight is always:
 docker compose --project-directory DIR --project-name PROJECT --file FILE config --quiet
 ```
 
-For `running`, it is followed by `up -d --remove-orphans APP`. For `stopped`,
-it is followed by `stop APP`. The agent never invokes `down`, removes
-containers explicitly, or deletes volumes. Commands are executed directly as
-argument vectors, never through a shell.
+For `running`, it is followed by `up -d --remove-orphans APP`. No other
+Compose mutation is approved. The agent never invokes `stop` or `down`,
+removes containers explicitly, or deletes volumes. Commands are executed
+directly as argument vectors, never through a shell.
 
 ## Fencing and persistence
 

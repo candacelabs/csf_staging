@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "bridge.go",
         "events.go",
+        "history.go",
         "resolutions.go",
         "turns.go",
         "usage_views.go",
@@ -28,6 +29,7 @@ go_test(
         "bridge_test.go",
         "copilotbridge_suite_test.go",
         "events_test.go",
+        "history_test.go",
         "resolutions_test.go",
         "turns_test.go",
         "usage_test.go",

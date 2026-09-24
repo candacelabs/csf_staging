@@ -15,6 +15,7 @@ import (
 	pb "github.com/candacelabs/csf/proto/candace/brainspine/v1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"go.uber.org/mock/gomock"
@@ -24,6 +25,15 @@ import (
 )
 
 var _ = Describe("Inspection in the shared host", func() {
+	It("exposes optional capability metrics in the same host endpoint", func() {
+		registry := prometheus.NewRegistry()
+		counter := prometheus.NewCounter(prometheus.CounterOpts{Name: "csf_email_send_total", Help: "Fixture send count"})
+		registry.MustRegister(counter)
+		counter.Inc()
+		families := scrapeInspection(NewInspection(WithInspectionRegistry(registry)))
+		Expect(families["csf_email_send_total"].Metric[0].GetCounter().GetValue()).To(Equal(float64(1)))
+		Expect(families).To(HaveKey("go_goroutines"))
+	})
 	DescribeTable("reports retained receipts and refreshes after retention changes", func(passed, failed int) {
 		root := GinkgoT().TempDir()
 		at := time.Now().Add(-time.Hour).Truncate(time.Second)

@@ -53,6 +53,7 @@ var _ = Describe("config.Load defaults (no file, no env)", func() {
 		Entry("bind :7717", func(c config.Config) any { return c.Bind }, ":7717"),
 		Entry("data_dir /var/lib/warden", func(c config.Config) any { return c.DataDir }, "/var/lib/warden"),
 		Entry("log_level info", func(c config.Config) any { return c.LogLevel }, "info"),
+		Entry("leader_id empty", func(c config.Config) any { return c.LeaderID }, ""),
 		Entry("heartbeat_interval 1s", func(c config.Config) any { return c.Timing.HeartbeatInterval }, time.Second),
 		Entry("suspect_after 5s", func(c config.Config) any { return c.Timing.SuspectAfter }, 5*time.Second),
 		Entry("dead_after 15s", func(c config.Config) any { return c.Timing.DeadAfter }, 15*time.Second),
@@ -93,6 +94,7 @@ var _ = Describe("config.Load env var mapping", func() {
 		Entry("WARDEN_BIND", "WARDEN_BIND", ":9999", func(c config.Config) any { return c.Bind }, ":9999"),
 		Entry("WARDEN_DATA_DIR", "WARDEN_DATA_DIR", "/data", func(c config.Config) any { return c.DataDir }, "/data"),
 		Entry("WARDEN_LOG_LEVEL", "WARDEN_LOG_LEVEL", "debug", func(c config.Config) any { return c.LogLevel }, "debug"),
+		Entry("WARDEN_LEADER_ID", "WARDEN_LEADER_ID", "n7", func(c config.Config) any { return c.LeaderID }, "n7"),
 		Entry("WARDEN_HEARTBEAT_INTERVAL", "WARDEN_HEARTBEAT_INTERVAL", "2s", func(c config.Config) any { return c.Timing.HeartbeatInterval }, 2*time.Second),
 		Entry("WARDEN_SUSPECT_AFTER", "WARDEN_SUSPECT_AFTER", "6s", func(c config.Config) any { return c.Timing.SuspectAfter }, 6*time.Second),
 		Entry("WARDEN_DEAD_AFTER", "WARDEN_DEAD_AFTER", "20s", func(c config.Config) any { return c.Timing.DeadAfter }, 20*time.Second),
@@ -143,6 +145,7 @@ var _ = Describe("config.Load env var mapping", func() {
 var _ = Describe("config.Load precedence", func() {
 	const yaml = `
 node_id: file-node
+leader_id: file-node
 bind: ":1111"
 log_level: warn
 peers:
@@ -161,11 +164,13 @@ notify:
 		cfg, err := config.Load(path, env(map[string]string{
 			"WARDEN_BIND":      ":2222",
 			"WARDEN_LOG_LEVEL": "error",
+			"WARDEN_LEADER_ID": "env-leader",
 			"WARDEN_COOLDOWN":  "45m",
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cfg.Bind).To(Equal(":2222"))     // env wins over file
 		Expect(cfg.LogLevel).To(Equal("error")) // env wins over file
+		Expect(cfg.LeaderID).To(Equal("env-leader"))
 		Expect(cfg.Watchdog.Cooldown).To(Equal(45 * time.Minute))
 		Expect(cfg.NodeID).To(Equal("file-node")) // file wins over default
 		Expect(cfg.Timing.HeartbeatInterval).To(Equal(2 * time.Second))
@@ -237,6 +242,12 @@ var _ = Describe("Config.Validate", func() {
 		cfg := base()
 		cfg.NodeID = "ghost"
 		Expect(cfg.Validate().Error()).To(ContainSubstring("not present in peers"))
+	})
+
+	It("rejects a configured leader absent from peers", func() {
+		cfg := base()
+		cfg.LeaderID = "ghost"
+		Expect(cfg.Validate().Error()).To(ContainSubstring("leader_id \"ghost\" is not present in peers"))
 	})
 
 	It("rejects duplicate peer ids", func() {

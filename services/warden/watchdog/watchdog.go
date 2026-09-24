@@ -2,6 +2,7 @@ package watchdog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -30,6 +31,10 @@ const (
 // Config tunes the watchdog. The zero value is valid; New substitutes
 // defaults for any zero field.
 type Config struct {
+	// LeaderID enables the configured-default-leader policy. A non-leader
+	// follower may notify only when its local, non-authoritative view marks this
+	// peer dead. Empty preserves the legacy acting-leader policy.
+	LeaderID warden.NodeID
 	// Cooldown is the minimum interval between notifications for the same
 	// (peer, incident type). Defaults to 10m when zero. The incident is still
 	// recorded in the log while suppressed; only the Notify call is skipped.
@@ -118,9 +123,10 @@ type loopState struct {
 	// inFlight guards against dispatching a second delivery goroutine for an
 	// incident whose first attempt has not yet reported a result.
 	inFlight map[string]bool
-	// wasLeader is the previous evaluation's leadership gate result, used to
-	// detect leadership transitions.
-	wasLeader bool
+	// wasWatching is the previous evaluation's alert-policy gate result, used
+	// to reset episode tracking when a leader or configured follower starts
+	// watching.
+	wasWatching bool
 	// quorumLost records that the isolation guard is currently suppressing
 	// evaluation (used to log the transition once instead of every tick).
 	quorumLost bool
@@ -138,6 +144,14 @@ func newLoopState() *loopState {
 type notifyResult struct {
 	inc warden.Incident
 	err error
+}
+
+// iRetryableError lets a notifier preserve an error while refusing an unsafe
+// retry, for example when a remote mail server may already have accepted DATA.
+// Notifiers without this classification retain the historical retry policy.
+type iRetryableError interface {
+	error
+	Retryable() bool
 }
 
 // Run is the watchdog event loop. It blocks until ctx is cancelled and then
@@ -182,10 +196,31 @@ func (w *Watchdog) Run(ctx context.Context) error {
 	}
 }
 
-// isActingLeader is the gate: the watchdog acts only when this node is the
-// authoritative leader that produced the view.
+// isActingLeader is the legacy gate: the watchdog acts only when this node is
+// the authoritative leader that produced the view.
 func isActingLeader(v warden.ClusterView) bool {
 	return v.Role == warden.RoleLeader && v.Authoritative && v.Source == v.Self
+}
+
+// isConfiguredLeaderFollower gates configured-leader observation. A follower
+// must use its own non-authoritative view so a cached leader report can never
+// cause an alert. It observes only the configured leader; this is a report of
+// local unreachability, not an assertion that the leader physically died.
+func isConfiguredLeaderFollower(v warden.ClusterView, leaderID warden.NodeID) bool {
+	return v.Role == warden.RoleFollower &&
+		v.Self != leaderID &&
+		v.LeaderID == leaderID &&
+		v.Source == v.Self &&
+		!v.Authoritative
+}
+
+func configuredLeaderPeer(v warden.ClusterView, leaderID warden.NodeID) (warden.PeerView, bool) {
+	for _, p := range v.Peers {
+		if p.Node.ID == leaderID {
+			return p, true
+		}
+	}
+	return warden.PeerView{}, false
 }
 
 // isVoter reports whether a peer's membership kind makes it eligible for
@@ -264,20 +299,36 @@ func liveQuorum(v warden.ClusterView) (clusterSize, alive int) {
 func (w *Watchdog) evaluate(ctx context.Context, st *loopState, wg *sync.WaitGroup, results chan<- notifyResult) {
 	v := w.src.View()
 
-	if !isActingLeader(v) {
-		// Not leader: raise nothing, evaluate nothing.
-		st.wasLeader = false
-		return
+	configuredLeader := w.cfg.LeaderID != ""
+	var watchedPeers []warden.PeerView
+	if configuredLeader {
+		if !isConfiguredLeaderFollower(v, w.cfg.LeaderID) {
+			st.wasWatching = false
+			return
+		}
+		leader, ok := configuredLeaderPeer(v, w.cfg.LeaderID)
+		if !ok {
+			st.wasWatching = false
+			return
+		}
+		watchedPeers = []warden.PeerView{leader}
+	} else {
+		if !isActingLeader(v) {
+			// Not leader: raise nothing, evaluate nothing.
+			st.wasWatching = false
+			return
+		}
+		watchedPeers = v.Peers
 	}
 
-	if !st.wasLeader {
-		// Gained leadership: adopt a fresh perspective. Reset open-episode
+	if !st.wasWatching {
+		// Began watching: adopt a fresh perspective. Reset open-episode
 		// tracking and drop stale pending deliveries from the previous epoch,
 		// but keep cooldown timestamps so a rapidly flapping leader process
 		// does not re-alert. In-flight goroutines from the prior epoch are
 		// left to report normally; handleResult applies their outcome
 		// harmlessly (removePending is a no-op for a dropped incident).
-		st.wasLeader = true
+		st.wasWatching = true
 		st.open = make(map[warden.NodeID]*episode)
 		st.pending = nil
 	}
@@ -299,31 +350,33 @@ func (w *Watchdog) evaluate(ctx context.Context, st *loopState, wg *sync.WaitGro
 	// that is a voter, in the voting set, and StatusAlive. When membership is
 	// absent (pre-membership views), fall back to the historical peers-based
 	// count so legacy behavior is unchanged.
-	clusterSize, alive := liveQuorum(v)
-	if alive < warden.Quorum(clusterSize) {
-		if !st.quorumLost {
-			st.quorumLost = true
-			core.Logger.Warn().
-				Str("node", string(v.Self)).
-				Int("alive", alive).
-				Int("quorum", warden.Quorum(clusterSize)).
-				Msg("warden watchdog: leader lost live peer quorum; suppressing death alerts (this node may be the isolated one)")
+	if !configuredLeader {
+		clusterSize, alive := liveQuorum(v)
+		if alive < warden.Quorum(clusterSize) {
+			if !st.quorumLost {
+				st.quorumLost = true
+				core.Logger.Warn().
+					Str("node", string(v.Self)).
+					Int("alive", alive).
+					Int("quorum", warden.Quorum(clusterSize)).
+					Msg("warden watchdog: leader lost live peer quorum; suppressing death alerts (this node may be the isolated one)")
+			}
+			return
 		}
-		return
-	}
-	if st.quorumLost {
-		st.quorumLost = false
-		core.Logger.Info().
-			Str("node", string(v.Self)).
-			Msg("warden watchdog: live peer quorum restored; resuming evaluation")
+		if st.quorumLost {
+			st.quorumLost = false
+			core.Logger.Info().
+				Str("node", string(v.Self)).
+				Msg("warden watchdog: live peer quorum restored; resuming evaluation")
+		}
 	}
 
 	now := w.clock.Now()
-	for _, p := range v.Peers {
+	for _, p := range watchedPeers {
 		if p.Node.ID == v.Self {
 			continue // self never generates an incident
 		}
-		if !isVoter(p.Member) {
+		if !configuredLeader && !isVoter(p.Member) {
 			// Observers and discovered nodes never open or close episodes:
 			// a candidate node that goes away pre-admission is not an
 			// operator emergency.
@@ -338,14 +391,14 @@ func (w *Watchdog) evaluate(ctx context.Context, st *loopState, wg *sync.WaitGro
 					lastSeen: p.LastSeen,
 					term:     v.Term,
 				}
-				inc := buildDeadIncident(v, p, now)
+				inc := buildDeadIncident(v, p, now, configuredLeader)
 				w.ring.append(inc)
 				w.queueOrSuppress(st, inc, now)
 			}
 		case warden.StatusAlive:
 			if ep, open := st.open[p.Node.ID]; open {
 				delete(st.open, p.Node.ID)
-				inc := buildRecoveryIncident(v, p, ep, now)
+				inc := buildRecoveryIncident(v, p, ep, now, configuredLeader)
 				w.ring.append(inc)
 				if w.cfg.NotifyRecovery {
 					w.queueOrSuppress(st, inc, now)
@@ -402,11 +455,23 @@ func (w *Watchdog) dispatchPending(ctx context.Context, st *loopState, wg *sync.
 
 // handleResult applies the outcome of one delivery goroutine to loop-owned
 // bookkeeping. On success it stamps the cooldown and removes the incident from
-// the pending queue (dedup: the episode is now notified); on failure it leaves
-// the incident pending for a later retry.
+// the pending queue. Retryable failures stay pending. A terminal error also
+// settles the attempt, but is logged as requiring operator review, not success.
 func (w *Watchdog) handleResult(st *loopState, r notifyResult) {
 	delete(st.inFlight, r.inc.ID)
 	if r.err != nil {
+		var classified iRetryableError
+		if errors.As(r.err, &classified) && !classified.Retryable() {
+			core.Logger.Error().
+				Err(r.err).
+				Str("incident_id", r.inc.ID).
+				Str("type", string(r.inc.Type)).
+				Str("peer_id", string(r.inc.Peer.ID)).
+				Msg("warden watchdog: notification needs operator review; automatic retry suppressed")
+			st.cooldowns[cooldownKey{peer: r.inc.Peer.ID, typ: r.inc.Type}] = w.clock.Now()
+			removePending(st, r.inc.ID)
+			return
+		}
 		core.Logger.Error().
 			Err(r.err).
 			Str("incident_id", r.inc.ID).
@@ -429,11 +494,17 @@ func removePending(st *loopState, id string) {
 }
 
 // buildDeadIncident constructs a peer_dead incident from a dead peer view.
-func buildDeadIncident(v warden.ClusterView, p warden.PeerView, now time.Time) warden.Incident {
+func buildDeadIncident(v warden.ClusterView, p warden.PeerView, now time.Time, configuredLeader bool) warden.Incident {
 	msg := fmt.Sprintf(
 		"peer %s (%s) declared dead by leader %s (term %d); last seen %s",
 		p.Node.ID, p.Node.Addr, v.Self, v.Term, core.FormatTimeOrNever(p.LastSeen),
 	)
+	if configuredLeader {
+		msg = fmt.Sprintf(
+			"configured leader %s (%s) observed unreachable by follower %s (term %d); last heartbeat %s",
+			p.Node.ID, p.Node.Addr, v.Self, v.Term, core.FormatTimeOrNever(p.LastSeen),
+		)
+	}
 	return warden.Incident{
 		ID:         warden.NewIncidentID(warden.IncidentPeerDead, p.Node.ID, now),
 		Type:       warden.IncidentPeerDead,
@@ -448,12 +519,18 @@ func buildDeadIncident(v warden.ClusterView, p warden.PeerView, now time.Time) w
 
 // buildRecoveryIncident constructs a peer_recovered incident when an open dead
 // episode closes, including the outage duration.
-func buildRecoveryIncident(v warden.ClusterView, p warden.PeerView, ep *episode, now time.Time) warden.Incident {
+func buildRecoveryIncident(v warden.ClusterView, p warden.PeerView, ep *episode, now time.Time, configuredLeader bool) warden.Incident {
 	outage := now.Sub(ep.openedAt)
 	msg := fmt.Sprintf(
 		"peer %s (%s) recovered (reported alive) by leader %s (term %d); outage lasted %s (dead detected %s)",
 		p.Node.ID, p.Node.Addr, v.Self, v.Term, outage, core.FormatTimeOrNever(ep.openedAt),
 	)
+	if configuredLeader {
+		msg = fmt.Sprintf(
+			"configured leader %s (%s) observed reachable again by follower %s (term %d); outage lasted %s (unreachability observed %s)",
+			p.Node.ID, p.Node.Addr, v.Self, v.Term, outage, core.FormatTimeOrNever(ep.openedAt),
+		)
+	}
 	return warden.Incident{
 		ID:         warden.NewIncidentID(warden.IncidentPeerRecovered, p.Node.ID, now),
 		Type:       warden.IncidentPeerRecovered,

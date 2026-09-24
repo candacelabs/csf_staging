@@ -6,6 +6,52 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/api/email/send": {
+      "post": {
+        "tags": [
+          "Research"
+        ],
+        "summary": "Email the configured operator. Requires an authenticated agent session. The host automatically attaches Spine provenance and retains a delivery receipt; SMTP acceptance does not prove inbox delivery. Do not blindly retry an unknown outcome.",
+        "operationId": "Research_SendEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "$ref": "#/components/schemas/candace.email.v1.EmailMessage"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "An unexpected error response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/google.rpc.Status"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "A successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/candace.email.v1.SendEmailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/agents/configuration/get": {
       "post": {
         "tags": [
@@ -699,6 +745,65 @@
         }
       }
     },
+    "/api/onboarding/learn": {
+      "post": {
+        "tags": [
+          "Research"
+        ],
+        "summary": "Explain the pinned CSF contract and index explicitly selected onboarding sources for retrieval.",
+        "operationId": "Research_LearnAboutCSF",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "consumerPaths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "copilotSessionIds": {
+                    "type": "array",
+                    "description": "Explicitly selected native Copilot CLI sessions. The host must opt in by\nconfiguring the read-only SDK bridge; an empty list performs no history read.",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "retrievalQuery": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "An unexpected error response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/google.rpc.Status"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "A successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/candace.brainspine.v1.LearnAboutCSFResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/knowledge/document": {
       "post": {
         "tags": [
@@ -1203,6 +1308,25 @@
           }
         }
       },
+      "candace.brainspine.v1.CopilotHistoryResult": {
+        "type": "object",
+        "description": "CopilotHistoryResult records one typed native session projection. The\nembedded ingestion receipt remains the durable queue and provenance result.",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "eventCount": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "ingest": {
+            "$ref": "#/components/schemas/candace.brainspine.v1.IngestDocumentResult"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        }
+      },
       "candace.brainspine.v1.DocumentRequest": {
         "type": "object",
         "properties": {
@@ -1478,6 +1602,41 @@
           },
           "vectorProjectionRef": {
             "type": "string"
+          }
+        }
+      },
+      "candace.brainspine.v1.LearnAboutCSFResponse": {
+        "type": "object",
+        "properties": {
+          "copilotHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/candace.brainspine.v1.CopilotHistoryResult"
+            }
+          },
+          "guidanceMarkdown": {
+            "type": "string"
+          },
+          "ingested": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/candace.brainspine.v1.IngestDocumentResult"
+            }
+          },
+          "knowledgeAvailable": {
+            "type": "boolean"
+          },
+          "knowledgeError": {
+            "type": "string"
+          },
+          "retrieval": {
+            "$ref": "#/components/schemas/candace.brainspine.v1.SearchResult"
+          },
+          "skippedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2072,6 +2231,203 @@
           "filePath": {
             "type": "string",
             "description": "Host filesystem path selected by composition, never supplied by an agent call."
+          }
+        }
+      },
+      "candace.email.v1.DeliveryOutcome": {
+        "type": "string",
+        "enum": [
+          "DELIVERY_OUTCOME_UNSPECIFIED",
+          "DELIVERY_OUTCOME_ACCEPTED",
+          "DELIVERY_OUTCOME_FAILED",
+          "DELIVERY_OUTCOME_UNKNOWN"
+        ]
+      },
+      "candace.email.v1.EmailMessage": {
+        "type": "object",
+        "description": "The host owns sender, operator recipients, provenance and transport settings.\nAn agent supplies message content, not a forged footer or runtime identity.",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "candace.email.v1.EmailReceipt": {
+        "type": "object",
+        "properties": {
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "errorCode": {
+            "type": "string",
+            "description": "Bounded classification only; never raw SMTP errors, recipients or message text."
+          },
+          "messageSha256": {
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/candace.email.v1.DeliveryOutcome"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/candace.provenance.v1.ReceiptMetadata"
+          }
+        }
+      },
+      "candace.email.v1.SendEmailResponse": {
+        "type": "object",
+        "properties": {
+          "receipt": {
+            "$ref": "#/components/schemas/candace.email.v1.EmailReceipt"
+          }
+        }
+      },
+      "candace.provenance.v1.ContainerObservation": {
+        "type": "object",
+        "properties": {
+          "image": {
+            "type": "string"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/candace.provenance.v1.EvidenceLink"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "node": {
+            "$ref": "#/components/schemas/candace.provenance.v1.NodeIdentity"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "$ref": "#/components/schemas/candace.provenance.v1.ContainerState"
+          }
+        }
+      },
+      "candace.provenance.v1.ContainerState": {
+        "type": "string",
+        "enum": [
+          "CONTAINER_STATE_UNSPECIFIED",
+          "CONTAINER_STATE_RUNNING",
+          "CONTAINER_STATE_STOPPED",
+          "CONTAINER_STATE_UNKNOWN"
+        ]
+      },
+      "candace.provenance.v1.EvidenceLink": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/candace.provenance.v1.EvidenceLinkKind"
+          },
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "The renderer additionally permits only HTTP(S), with no userinfo or secrets."
+          }
+        }
+      },
+      "candace.provenance.v1.EvidenceLinkKind": {
+        "type": "string",
+        "enum": [
+          "EVIDENCE_LINK_KIND_UNSPECIFIED",
+          "EVIDENCE_LINK_KIND_LOGS",
+          "EVIDENCE_LINK_KIND_TRACE",
+          "EVIDENCE_LINK_KIND_GRAFANA",
+          "EVIDENCE_LINK_KIND_WORKBENCH",
+          "EVIDENCE_LINK_KIND_CSF"
+        ]
+      },
+      "candace.provenance.v1.NodeIdentity": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "hostname": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "candace.provenance.v1.ReceiptMetadata": {
+        "type": "object",
+        "description": "A transport signature is not implied: this record identifies observations,\nnot cryptographic attestation. Unknown values stay absent, never inferred.",
+        "properties": {
+          "containers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/candace.provenance.v1.ContainerObservation"
+            }
+          },
+          "csfVersion": {
+            "type": "string"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/candace.provenance.v1.EvidenceLink"
+            }
+          },
+          "receiptId": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reportingNode": {
+            "$ref": "#/components/schemas/candace.provenance.v1.NodeIdentity"
+          },
+          "schemaVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sessions": {
+            "type": "array",
+            "description": "Only sessions associated with this operation, supplied by its trusted host.\nDo not collect unrelated conversations, prompts, credentials or tokens.",
+            "items": {
+              "$ref": "#/components/schemas/candace.provenance.v1.SessionReference"
+            }
+          },
+          "sourceRevision": {
+            "type": "string"
+          },
+          "unavailable": {
+            "type": "array",
+            "description": "Explicit collection gaps, e.g. \"container observer unavailable\".",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "candace.provenance.v1.SessionReference": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Stable provider identifier, e.g. copilot or chatgpt, not a model guess."
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
           }
         }
       },

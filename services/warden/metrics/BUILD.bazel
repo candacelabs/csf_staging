@@ -31,6 +31,7 @@ go_test(
         "//services/warden/internal/mocks",
         "@com_github_onsi_ginkgo_v2//:ginkgo",
         "@com_github_onsi_gomega//:gomega",
+        "@com_github_prometheus_client_golang//prometheus",
         "@org_uber_go_mock//gomock",
     ],
 )

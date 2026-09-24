@@ -32,9 +32,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 
 	"github.com/candacelabs/csf/pkg/core"
+	"github.com/candacelabs/csf/services/email"
 	"github.com/candacelabs/csf/services/warden"
 	"github.com/candacelabs/csf/services/warden/config"
 	"github.com/candacelabs/csf/services/warden/dashboard"
@@ -60,6 +62,9 @@ const shutdownGrace = 5 * time.Second
 const (
 	// stateFileName is the election-state file written under data_dir.
 	stateFileName = "state.json"
+	// emailReceiptsDirectory retains private SMTP send-attempt receipts below
+	// data_dir.
+	emailReceiptsDirectory = "email-receipts"
 	// envConfig and envLogFormat are the two environment variables main reads
 	// directly, outside config.applyEnv: the default -config path and the log
 	// output format selector.
@@ -68,6 +73,9 @@ const (
 	// logFormatConsole selects the human-readable console log writer; any other
 	// value (including empty) leaves the default JSON writer in place.
 	logFormatConsole = "console"
+	// emailProvenanceFlag names an optional, private protobuf-JSON deployment
+	// metadata file for SMTP receipt provenance.
+	emailProvenanceFlag = "email-provenance"
 )
 
 func main() {
@@ -79,6 +87,8 @@ func main() {
 func run() int {
 	configPath := flag.String("config", os.Getenv(envConfig),
 		"path to the warden YAML config file (default: $WARDEN_CONFIG, else defaults+env only)")
+	emailProvenancePath := flag.String(emailProvenanceFlag, "",
+		"private protobuf-JSON deployment facts for SMTP receipt provenance")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -140,6 +150,7 @@ func run() int {
 
 	// --- component construction -----------------------------------------
 	clock := warden.NewRealClock()
+	registry := prometheus.NewRegistry()
 	st := store.NewFileStore(filepath.Join(cfg.DataDir, stateFileName))
 	// tr is the gRPC cluster transport; its per-peer connections are released
 	// on Close once every component (including the manager's outbound RPC
@@ -200,6 +211,7 @@ func run() int {
 		ElectionTimeoutMax: cfg.Timing.ElectionTimeoutMax,
 		RPCTimeout:         cfg.Timing.RPCTimeout,
 		ViewFreshFor:       cfg.Timing.DeadAfter,
+		LeaderID:           warden.NodeID(cfg.LeaderID),
 		Discoverer:         discoverer,
 		ClusterID:          cfg.Discovery.ClusterID,
 		BuildVersion:       version,
@@ -218,6 +230,15 @@ func run() int {
 	var notifier warden.INotifier
 	switch cfg.Notify.Mode {
 	case config.NotifyModeSMTP:
+		baseProvenance, provenanceErr := loadEmailProvenance(*emailProvenancePath)
+		if provenanceErr != nil {
+			logger.Fatal().Err(provenanceErr).Str("email_provenance", *emailProvenancePath).Msg("loading SMTP receipt provenance")
+		}
+		provenance := newWardenEmailProvenance(self, baseProvenance)
+		receipts, receiptErr := email.NewFileReceiptSink(filepath.Join(cfg.DataDir, emailReceiptsDirectory))
+		if receiptErr != nil {
+			logger.Fatal().Err(receiptErr).Msg("preparing SMTP receipt sink")
+		}
 		notifier = notify.NewSMTPNotifier(notify.SMTPConfig{
 			Host:     cfg.Notify.SMTPHost,
 			Port:     cfg.Notify.SMTPPort,
@@ -225,7 +246,11 @@ func run() int {
 			Password: cfg.Notify.SMTPPass,
 			From:     cfg.Notify.SMTPFrom,
 			To:       cfg.Notify.SMTPTo,
-		})
+		},
+			notify.WithProvenance(provenance),
+			notify.WithReceiptSink(receipts),
+			notify.WithMetrics(registry),
+		)
 	case config.NotifyModeFile:
 		notifier = notify.NewFileNotifier(cfg.Notify.File)
 	case config.NotifyModeLog:
@@ -237,6 +262,7 @@ func run() int {
 	// CheckInterval: the watchdog re-evaluates peer liveness once per
 	// heartbeat cycle. (No dedicated config knob; derived here.)
 	wd := watchdog.New(watchdog.Config{
+		LeaderID:       warden.NodeID(cfg.LeaderID),
 		Cooldown:       cfg.Watchdog.Cooldown,
 		NotifyRecovery: *cfg.Watchdog.NotifyRecovery, // resolved non-nil by config.Load
 		MaxIncidents:   cfg.Watchdog.MaxIncidents,
@@ -247,7 +273,7 @@ func run() int {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("constructing dashboard")
 	}
-	mets := metrics.New(mgr)
+	mets := metrics.New(mgr, metrics.WithRegistry(registry))
 
 	// One bound port serves the whole node surface: the gRPC WardenService
 	// (cluster RPCs + WatchCluster) and the gin HTTP engine (dashboard +

@@ -40,7 +40,7 @@ opam.deps(
     },
     toolchain = "xdg",
 )
-use_repo(opam, "opam.cmdliner", "opam.lock", "opam.ocamlsdk", "opam.ppxlib", "opam.sha", "opam.yojson")
+use_repo(opam, "opam.bytecode", "opam.cmdliner", "opam.compiler", "opam.lock", "opam.ocamlsdk", "opam.ppxlib", "opam.repository", "opam.sha", "opam.yojson")
 
 register_toolchains(
     "@opam.ocamlsdk//toolchain/selectors/local:all",

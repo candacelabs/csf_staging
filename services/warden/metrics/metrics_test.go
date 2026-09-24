@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/mock/gomock"
 
 	"github.com/candacelabs/csf/services/warden"
@@ -148,6 +149,21 @@ func mustLines(body string, wants ...string) {
 }
 
 var _ = Describe("Metrics collector", func() {
+	It("exposes a host-registered capability counter through the shared registry", func() {
+		registry := prometheus.NewRegistry()
+		capability := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "warden_notifier_capability_total",
+			Help: "Host-registered notifier capability checks.",
+		})
+		registry.MustRegister(capability)
+		capability.Inc()
+
+		mux := httpserver.NewEngine()
+		New(mockView(onePerStatusView()), WithRegistry(registry)).Register(mux)
+
+		Expect(scrape(mux)).To(ContainSubstring("warden_notifier_capability_total 1"))
+	})
+
 	// TestScrapeValues
 	It("emits leader/term/peer/latency series with correct values", func() {
 		mux := httpserver.NewEngine()

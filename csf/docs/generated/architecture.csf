@@ -169,3 +169,5 @@ diagram agent_assignment LR {
 document "examples/csf-agent/README.md" { agent_assignment; }
 
 document "csf/README.md" { architecture; improvement; simulation; }
+
+document "README.md" { architecture; improvement; }

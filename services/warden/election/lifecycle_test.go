@@ -74,7 +74,7 @@ var _ = Describe("manager lifecycle", func() {
 		for i := 0; i < n; i++ {
 			go func() {
 				defer GinkgoRecover()
-				m.HandleHeartbeat(context.Background(), warden.HeartbeatRequest{Term: 1, LeaderID: "b"})
+				m.HandleHeartbeat(heartbeatContext(context.Background(), "b"), warden.HeartbeatRequest{Term: 1, LeaderID: "b"})
 				m.HandleVote(context.Background(), warden.VoteRequest{Term: 1, CandidateID: "b"})
 				results <- struct{}{}
 			}()

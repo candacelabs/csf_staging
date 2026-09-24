@@ -99,86 +99,63 @@ var _ = Describe("DockerComposeRunner", func() {
 		sourceRevision, sourceDigest = commitAgentWorkspace(workspace)
 	})
 
-	It("plans preflight then a non-destructive running convergence", func() {
-		composeProcess := NewMockIComposeProcessExecutor(gomock.NewController(GinkgoT()))
-		runner, err := agent.NewDockerComposeRunner(
-			testDockerCLI.Configured, workspace, revisionRoot, testRevisionLimits(), true,
-			agent.WithComposeProcessExecutor(composeProcess),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		assignment := testAssignment("notes", "candace-notes", "notes", candaceosv1.DesiredState_DESIRED_STATE_RUNNING)
-		assignment.SourceRevision, assignment.ContentSha256 = sourceRevision, sourceDigest
-		plan, err := runner.Plan(context.Background(), assignment)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(plan.Commands).To(HaveLen(2))
-		Expect(plan.Commands[0].Argv[len(plan.Commands[0].Argv)-2:]).To(Equal([]string{"config", "--quiet"}))
-		Expect(plan.Commands[1].Argv[len(plan.Commands[1].Argv)-4:]).To(Equal([]string{"up", "-d", "--remove-orphans", "notes"}))
-		Expect(plan.Commands[1].Argv).NotTo(ContainElement("down"))
-		Expect(argumentAfter(plan.Commands[1].Argv, "--project-directory")).To(HavePrefix(revisionRoot + string(filepath.Separator)))
-		composeProcess.EXPECT().Run(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, invocation agent.ComposeInvocation) (string, error) {
-				Expect(invocation.Argv).To(Equal(plan.Commands[0].Argv))
-				return "", nil
-			},
-		)
-		Expect(runner.Execute(context.Background(), plan)).To(Succeed())
-	})
+	DescribeTable("plans the approved running convergence in dry-run and live mode",
+		func(dryRun bool, expectedRuns int) {
+			composeProcess := NewMockIComposeProcessExecutor(gomock.NewController(GinkgoT()))
+			if !dryRun {
+				composeProcess.EXPECT().Resolve(testDockerCLI.Configured).Return(testDockerCLI.Resolved, nil)
+			}
+			runner, err := agent.NewDockerComposeRunner(
+				testDockerCLI.Configured, workspace, revisionRoot, testRevisionLimits(), dryRun,
+				agent.WithComposeProcessExecutor(composeProcess),
+			)
+			Expect(err).NotTo(HaveOccurred())
+			assignment := testAssignment("notes", "candace-notes", "notes", candaceosv1.DesiredState_DESIRED_STATE_RUNNING)
+			assignment.SourceRevision, assignment.ContentSha256 = sourceRevision, sourceDigest
+			plan, err := runner.Plan(context.Background(), assignment)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(plan.Commands).To(HaveLen(2))
+			Expect(plan.Commands[0].Argv[len(plan.Commands[0].Argv)-2:]).To(Equal([]string{"config", "--quiet"}))
+			Expect(plan.Commands[1].Argv[len(plan.Commands[1].Argv)-4:]).To(Equal([]string{"up", "-d", "--remove-orphans", "notes"}))
+			Expect(plan.Commands[1].Argv).NotTo(ContainElement("down"))
+			Expect(argumentAfter(plan.Commands[1].Argv, "--project-directory")).To(HavePrefix(revisionRoot + string(filepath.Separator)))
+			var invocations []agent.ComposeInvocation
+			composeProcess.EXPECT().Run(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, invocation agent.ComposeInvocation) (string, error) {
+					invocations = append(invocations, invocation)
+					return "", nil
+				},
+			).Times(expectedRuns)
+			Expect(runner.Execute(context.Background(), plan)).To(Succeed())
+			Expect(invocations[0].Argv).To(Equal(plan.Commands[0].Argv))
+			if !dryRun {
+				Expect(invocations[1].Argv).To(Equal(plan.Commands[1].Argv))
+			}
+		},
+		Entry("dry run", true, 1),
+		Entry("live", false, 2),
+	)
 
-	It("stops by Compose identity even after the app source is removed", func() {
-		composeProcess := NewMockIComposeProcessExecutor(gomock.NewController(GinkgoT()))
-		runner, err := agent.NewDockerComposeRunner(
-			testDockerCLI.Configured, workspace, revisionRoot, testRevisionLimits(), true,
-			agent.WithComposeProcessExecutor(composeProcess),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(os.RemoveAll(filepath.Join(workspace, "notes"))).To(Succeed())
+	DescribeTable("rejects STOPPED without invoking Compose in dry-run or live mode",
+		func(dryRun bool) {
+			composeProcess := NewMockIComposeProcessExecutor(gomock.NewController(GinkgoT()))
+			if !dryRun {
+				composeProcess.EXPECT().Resolve(testDockerCLI.Configured).Return(testDockerCLI.Resolved, nil)
+			}
+			runner, err := agent.NewDockerComposeRunner(
+				testDockerCLI.Configured, workspace, revisionRoot, testRevisionLimits(), dryRun,
+				agent.WithComposeProcessExecutor(composeProcess),
+			)
+			Expect(err).NotTo(HaveOccurred())
 
-		plan, err := runner.Plan(context.Background(), testAssignment("notes", "candace-notes", "notes", candaceosv1.DesiredState_DESIRED_STATE_STOPPED))
+			_, err = runner.Plan(context.Background(), testAssignment("notes", "candace-notes", "notes", candaceosv1.DesiredState_DESIRED_STATE_STOPPED))
 
-		Expect(err).NotTo(HaveOccurred())
-		Expect(plan.Commands[0].Argv[len(plan.Commands[0].Argv)-2:]).To(Equal([]string{"config", "--quiet"}))
-		Expect(plan.Commands[1].Argv[len(plan.Commands[1].Argv)-2:]).To(Equal([]string{"stop", "notes"}))
-		Expect(plan.Commands[1].Argv).NotTo(ContainElement("down"))
-		composePath := plan.Commands[0].Argv[len(plan.Commands[0].Argv)-3]
-		info, err := os.Stat(composePath)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(info.Mode().Perm()).To(Equal(os.FileMode(0o600)))
-		contents, err := os.ReadFile(composePath)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(string(contents)).To(MatchJSON(`{"services":{"notes":{"image":"scratch"}}}`))
-		composeProcess.EXPECT().Run(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, invocation agent.ComposeInvocation) (string, error) {
-				Expect(invocation.Argv).To(Equal(plan.Commands[0].Argv))
-				return "", nil
-			},
-		)
-		Expect(runner.Execute(context.Background(), plan)).To(Succeed())
-	})
-
-	It("executes the exact source-independent stop plan in live mode", func() {
-		composeProcess := NewMockIComposeProcessExecutor(gomock.NewController(GinkgoT()))
-		composeProcess.EXPECT().Resolve(testDockerCLI.Configured).Return(testDockerCLI.Resolved, nil)
-		runner, err := agent.NewDockerComposeRunner(
-			testDockerCLI.Configured, workspace, revisionRoot, testRevisionLimits(), false,
-			agent.WithComposeProcessExecutor(composeProcess),
-		)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(os.RemoveAll(filepath.Join(workspace, "notes"))).To(Succeed())
-		plan, err := runner.Plan(context.Background(), testAssignment("notes", "candace-notes", "notes", candaceosv1.DesiredState_DESIRED_STATE_STOPPED))
-		Expect(err).NotTo(HaveOccurred())
-		var invocations []agent.ComposeInvocation
-		composeProcess.EXPECT().Run(gomock.Any(), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, invocation agent.ComposeInvocation) (string, error) {
-				invocations = append(invocations, invocation)
-				return "", nil
-			},
-		).Times(2)
-
-		Expect(runner.Execute(context.Background(), plan)).To(Succeed())
-
-		Expect(invocations[0].Argv).To(Equal(plan.Commands[0].Argv))
-		Expect(invocations[1].Argv).To(Equal(plan.Commands[1].Argv))
-	})
+			Expect(err).To(MatchError(agent.ErrStoppedAssignmentUnsupported))
+			// No Run expectation is registered: a command-spy call fails this test.
+		},
+		Entry("dry run", true),
+		Entry("live", false),
+	)
 
 	It("rejects symbolic links from an approved Git tree", func() {
 		outside := GinkgoT().TempDir()
@@ -609,7 +586,7 @@ var _ = Describe("Fenced reconciliation", func() {
 		executor := NewMockIExecutor(gomock.NewController(GinkgoT()))
 		reconciler, err := agent.NewReconciler(store, executor)
 		Expect(err).NotTo(HaveOccurred())
-		assignment := testAssignment("notes", "notes", "notes", candaceosv1.DesiredState_DESIRED_STATE_STOPPED)
+		assignment := testAssignment("notes", "notes", "notes", candaceosv1.DesiredState_DESIRED_STATE_RUNNING)
 
 		_, staleErr := reconciler.Reconcile(context.Background(), &candaceosv1.ReconcileRequest{
 			Fence: &candaceosv1.Fence{Term: 3, LeaderId: "warden-a"}, Assignment: assignment,
@@ -664,6 +641,7 @@ var _ = Describe("Fenced reconciliation", func() {
 		workspace := GinkgoT().TempDir()
 		Expect(os.Mkdir(filepath.Join(workspace, "notes"), 0o755)).To(Succeed())
 		Expect(os.WriteFile(filepath.Join(workspace, "notes", "compose.yaml"), []byte("services: {}\n"), 0o600)).To(Succeed())
+		sourceRevision, sourceDigest := commitAgentWorkspace(workspace)
 		composeProcess := NewMockIComposeProcessExecutor(gomock.NewController(GinkgoT()))
 		composeProcess.EXPECT().Run(gomock.Any(), gomock.Any()).Return("", nil).Times(2)
 		revisionRoot := GinkgoT().TempDir()
@@ -677,8 +655,9 @@ var _ = Describe("Fenced reconciliation", func() {
 		Expect(err).NotTo(HaveOccurred())
 		request := &candaceosv1.ReconcileRequest{
 			Fence:      &candaceosv1.Fence{Term: 1, LeaderId: "warden-a"},
-			Assignment: testAssignment("notes", "notes", "notes", candaceosv1.DesiredState_DESIRED_STATE_STOPPED),
+			Assignment: testAssignment("notes", "notes", "notes", candaceosv1.DesiredState_DESIRED_STATE_RUNNING),
 		}
+		request.Assignment.SourceRevision, request.Assignment.ContentSha256 = sourceRevision, sourceDigest
 		_, err = reconciler.Reconcile(context.Background(), request)
 		Expect(err).NotTo(HaveOccurred())
 		_, err = reconciler.Reconcile(context.Background(), request)

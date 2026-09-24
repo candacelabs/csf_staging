@@ -76,10 +76,19 @@ func (mailbox *Mailbox[State]) Run(state *State) {
 }
 
 // Submit hands one command to the owning goroutine and blocks until it is
-// accepted, reporting false when the mailbox stopped first. It does not wait
-// for the command to run: a caller that needs the result replies to itself
+// accepted, reporting false when the mailbox had already stopped. It does not
+// wait for the command to run: a caller that needs the result replies to itself
 // through a channel the command closes over.
+//
+// A successful rendezvous with the unbuffered command channel is Submit's
+// linearization point. Stop observed before submission begins always wins. If
+// Stop races after submission has begun, either result is valid: an accepted
+// command rendezvoused first, while a refused command observed Stop first.
 func (mailbox *Mailbox[State]) Submit(command Command[State]) bool {
+	if mailbox.isStopped() {
+		return false
+	}
+
 	select {
 	case mailbox.commands <- command:
 		return true
@@ -94,12 +103,18 @@ func (mailbox *Mailbox[State]) Submit(command Command[State]) bool {
 //
 // It reports false for all three abandonments alike, because the caller
 // already holds the ctx and the channel and can tell them apart better than
-// this package can name them.
+// this package can name them. An abandonment that is already observable when
+// SubmitContext begins always wins over an available command receiver. Once it
+// has begun waiting, the first selected event is the linearization point.
 func (mailbox *Mailbox[State]) SubmitContext(
 	ctx context.Context,
 	canceled <-chan struct{},
 	command Command[State],
 ) bool {
+	if isDone(ctx.Done()) || isDone(canceled) || mailbox.isStopped() {
+		return false
+	}
+
 	select {
 	case <-ctx.Done():
 		return false
@@ -111,6 +126,17 @@ func (mailbox *Mailbox[State]) SubmitContext(
 		return true
 	}
 }
+
+func isDone(signal <-chan struct{}) bool {
+	select {
+	case <-signal:
+		return true
+	default:
+		return false
+	}
+}
+
+func (mailbox *Mailbox[State]) isStopped() bool { return isDone(mailbox.stopped) }
 
 // Stop makes every later submission fail and closes the channel [Mailbox.Stopped]
 // reports. It is idempotent, and it does not retire the goroutine on its own —

@@ -33,7 +33,7 @@ type agentMCPFixture struct {
 }
 
 var _ = Describe("agent MCP authentication", func() {
-	It("requires one nonempty bearer key", func() {
+	It("requires one nonempty signing key", func() {
 		_, err := csf.NewAgentMCPAuthenticator(nil)
 
 		Expect(err).To(HaveOccurred())
@@ -60,7 +60,7 @@ var _ = Describe("agent MCP authentication", func() {
 		Expect(response.Body.String()).NotTo(ContainSubstring(`"isError":true`))
 	})
 
-	DescribeTable("rejects a request without the bearer key", func(mutate func(request *http.Request)) {
+	DescribeTable("rejects a request without a valid session credential", func(mutate func(request *http.Request)) {
 		service, err := csf.New()
 		Expect(err).NotTo(HaveOccurred())
 		fixture := buildAgentMCPFixture(service)
@@ -78,13 +78,27 @@ var _ = Describe("agent MCP authentication", func() {
 		Entry("wrong key", func(request *http.Request) {
 			request.Header.Set(csf.AgentMCPAuthorizationHeader, agentMCPAuthenticationBearerPrefix+agentMCPAuthenticationWrongKey)
 		}),
+		Entry("raw signing key", func(request *http.Request) {
+			request.Header.Set(csf.AgentMCPAuthorizationHeader, agentMCPAuthenticationBearerPrefix+agentMCPAuthenticationTestKey)
+		}),
+		Entry("credential signed by another key", func(request *http.Request) {
+			authenticator, err := csf.NewAgentMCPAuthenticator([]byte(agentMCPAuthenticationWrongKey))
+			Expect(err).NotTo(HaveOccurred())
+			headers, err := authenticator.AgentMCPHeaders(agentMCPAuthenticationTestAgentID, agentMCPAuthenticationTestSessionID)
+			Expect(err).NotTo(HaveOccurred())
+			request.Header.Set(csf.AgentMCPAuthorizationHeader, headers.Get(csf.AgentMCPAuthorizationHeader))
+		}),
+		Entry("duplicate credential", func(request *http.Request) {
+			request.Header.Add(csf.AgentMCPAuthorizationHeader, request.Header.Get(csf.AgentMCPAuthorizationHeader))
+		}),
 	)
 
 	DescribeTable("rejects a bearer-authenticated request with an invalid identity", func(mutate func(request *http.Request)) {
-		service, err := csf.New()
+		store := mocks.NewMockIAgentConfigurationStore(gomock.NewController(GinkgoT()))
+		service, err := csf.New(csf.WithAgentConfigurations(store))
 		Expect(err).NotTo(HaveOccurred())
 		fixture := buildAgentMCPFixture(service)
-		request := buildAgentMCPRequest(fixture, agentMCPAuthenticationToolsList)
+		request := buildAgentMCPRequest(fixture, agentMCPAuthenticationToolCall)
 		mutate(request)
 		response := httptest.NewRecorder()
 
@@ -94,7 +108,49 @@ var _ = Describe("agent MCP authentication", func() {
 	},
 		Entry("invalid agent ID", func(request *http.Request) { request.Header.Set(csf.AgentMCPAgentIDHeader, "agent.mcp.test") }),
 		Entry("invalid session UUID", func(request *http.Request) { request.Header.Set(csf.AgentMCPSessionIDHeader, "not-a-uuid") }),
+		Entry("another valid agent", func(request *http.Request) { request.Header.Set(csf.AgentMCPAgentIDHeader, "another-agent") }),
+		Entry("another valid session", func(request *http.Request) {
+			request.Header.Set(csf.AgentMCPSessionIDHeader, "312ce098-3743-4eae-b8e2-33c9026933c4")
+		}),
+		Entry("duplicate agent ID", func(request *http.Request) {
+			request.Header.Add(csf.AgentMCPAgentIDHeader, agentMCPAuthenticationTestAgentID)
+		}),
+		Entry("duplicate session ID", func(request *http.Request) {
+			request.Header.Add(csf.AgentMCPSessionIDHeader, agentMCPAuthenticationTestSessionID)
+		}),
 	)
+
+	It("rejects an impersonated configuration update before persistence", func() {
+		store := mocks.NewMockIAgentConfigurationStore(gomock.NewController(GinkgoT()))
+		service, err := csf.New(csf.WithAgentConfigurations(store))
+		Expect(err).NotTo(HaveOccurred())
+		fixture := buildAgentMCPFixture(service)
+		input := buildValidAgentConfigFixture(configurationAgentID)
+		body := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"UpdateOwnAgentConfiguration","arguments":{"configuration":` + mustJSON(input) + `}}}`
+		request := buildAgentMCPRequest(fixture, body)
+		request.Header.Set(csf.AgentMCPAgentIDHeader, configurationAgentID)
+		response := httptest.NewRecorder()
+
+		fixture.handler.ServeHTTP(response, request)
+
+		Expect(response.Code).To(Equal(http.StatusUnauthorized))
+	})
+
+	It("issues distinct session credentials without disclosing the signing key", func() {
+		authenticator, err := csf.NewAgentMCPAuthenticator([]byte(agentMCPAuthenticationTestKey))
+		Expect(err).NotTo(HaveOccurred())
+		first, err := authenticator.AgentMCPHeaders(agentMCPAuthenticationTestAgentID, agentMCPAuthenticationTestSessionID)
+		Expect(err).NotTo(HaveOccurred())
+		otherAgent, err := authenticator.AgentMCPHeaders("another-agent", agentMCPAuthenticationTestSessionID)
+		Expect(err).NotTo(HaveOccurred())
+		otherSession, err := authenticator.AgentMCPHeaders(agentMCPAuthenticationTestAgentID, "312ce098-3743-4eae-b8e2-33c9026933c4")
+		Expect(err).NotTo(HaveOccurred())
+
+		credential := first.Get(csf.AgentMCPAuthorizationHeader)
+		Expect(credential).NotTo(ContainSubstring(agentMCPAuthenticationTestKey))
+		Expect(credential).NotTo(Equal(otherAgent.Get(csf.AgentMCPAuthorizationHeader)))
+		Expect(credential).NotTo(Equal(otherSession.Get(csf.AgentMCPAuthorizationHeader)))
+	})
 
 	It("keeps the legacy MCP handler unauthenticated", func() {
 		service, err := csf.New()

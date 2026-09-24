@@ -2,7 +2,7 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -26,6 +26,10 @@ var composeFileNames = []string{
 }
 
 const commandOutputLimit = 8 << 10
+
+// ErrStoppedAssignmentUnsupported means STOPPED is outside this executor's
+// approved Compose command surface.
+var ErrStoppedAssignmentUnsupported = errors.New("STOPPED assignments are unsupported")
 
 // IExecutor validates, plans, and executes a Compose reconciliation.
 type IExecutor interface {
@@ -273,25 +277,17 @@ func (r *DockerComposeRunner) DryRun() bool { return r.dryRun }
 // Workspace returns the canonical workspace path.
 func (r *DockerComposeRunner) Workspace() string { return r.workspace }
 
-// Plan returns the exact read-only preflight and mutating convergence commands
-// for one assignment. Stopping is deliberately source-independent: a removed
-// app must still be stoppable by its stable Compose project and service names.
+// Plan returns the exact approved Compose command plan for one running
+// assignment. STOPPED fails closed because its required Compose mutation is
+// outside the executor's approved command surface.
 func (r *DockerComposeRunner) Plan(ctx context.Context, assignment *candaceosv1.Assignment) (Plan, error) {
 	if err := candaceosv1.ValidateAssignment(assignment); err != nil {
 		return Plan{}, err
 	}
 	if assignment.GetDesiredState() == candaceosv1.DesiredState_DESIRED_STATE_STOPPED {
-		return r.planStoppedAssignment(assignment)
+		return Plan{}, ErrStoppedAssignmentUnsupported
 	}
 	return r.planRunningAssignment(ctx, assignment)
-}
-
-func (r *DockerComposeRunner) planStoppedAssignment(assignment *candaceosv1.Assignment) (Plan, error) {
-	composeFile, err := writeStopComposeFile(assignment.GetProject(), assignment.GetApp())
-	if err != nil {
-		return Plan{}, err
-	}
-	return r.composePlan(r.workspace, composeFile, assignment, "stop", assignment.GetApp()), nil
 }
 
 func (r *DockerComposeRunner) planRunningAssignment(ctx context.Context, assignment *candaceosv1.Assignment) (Plan, error) {
@@ -395,24 +391,6 @@ func (osComposeProcessExecutor) Run(ctx context.Context, invocation ComposeInvoc
 
 func newCommandOutputBuffer() (*boundedbuffer.Buffer, error) {
 	return boundedbuffer.New(&boundedbufferv1.Retention{MaxBytes: commandOutputLimit})
-}
-
-func writeStopComposeFile(project, app string) (string, error) {
-	directory := filepath.Join(os.TempDir(), "candaceos-agent")
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return "", fmt.Errorf("creating stop-plan directory: %w", err)
-	}
-	contents, err := json.Marshal(map[string]any{
-		"services": map[string]any{app: map[string]string{"image": "scratch"}},
-	})
-	if err != nil {
-		return "", fmt.Errorf("encoding stop-plan Compose file: %w", err)
-	}
-	path := filepath.Join(directory, "stop-"+project+"-"+app+".yaml")
-	if err := os.WriteFile(path, append(contents, '\n'), 0o600); err != nil {
-		return "", fmt.Errorf("writing stop-plan Compose file: %w", err)
-	}
-	return path, nil
 }
 
 func findComposeFileInMaterializedRevision(appDir string) (string, error) {

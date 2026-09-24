@@ -1,4 +1,12 @@
-# Add CSF to your Go process
+# Extend CSF
+
+| Extension | Guide |
+|---|---|
+| Language, architecture checker, policies and generators | [Extend the CSF language](compiler/architecture/README.md#extend-the-language). All sources ship in the export and can be adapted in your own checkout. |
+| Runtime capabilities in an existing Go process | The composition example below. |
+| Agent-authored tools on the same MCP server | [Agent-native onboarding](README.md#agent-native-onboarding) describes the intended workflow and its current status. Consumer tool registration and discovery/call acceptance remain planned. |
+
+## Add CSF to your Go process
 
 Import the public module and mount the service into the Gin router
 that your binary already owns:

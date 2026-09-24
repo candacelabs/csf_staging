@@ -2,7 +2,9 @@ package csf
 
 import (
 	"context"
-	"crypto/subtle"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -12,35 +14,38 @@ import (
 )
 
 const (
-	// AgentMCPAuthorizationHeader carries the bearer key for an agent MCP request.
+	// AgentMCPAuthorizationHeader carries a session-bound credential for an agent MCP request.
 	AgentMCPAuthorizationHeader = "Authorization"
 	// AgentMCPAgentIDHeader identifies the agent making an authenticated MCP request.
 	AgentMCPAgentIDHeader = "X-CSF-Agent-ID"
 	// AgentMCPSessionIDHeader identifies the agent session making an authenticated MCP request.
 	AgentMCPSessionIDHeader = "X-CSF-Session-ID"
 
-	agentMCPBearerPrefix = "Bearer "
+	agentMCPBearerPrefix     = "Bearer "
+	agentMCPCredentialDomain = "csf.agent-mcp.v1"
+	agentMCPCredentialPrefix = "v1."
 )
 
 var agentMCPAgentIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 
-// AgentMCPAuthenticator verifies the one bearer key accepted by CSF's
-// protected streamable MCP route.
+// AgentMCPAuthenticator signs and verifies identity-bound session credentials
+// for CSF's protected streamable MCP route. Its signing key stays with the host.
 type AgentMCPAuthenticator struct {
 	key []byte
 }
 
 // NewAgentMCPAuthenticator creates an authenticator from one caller-owned
-// bearer key.
+// signing key. Credentials remain valid for their identity tuple until key rotation.
 func NewAgentMCPAuthenticator(key []byte) (*AgentMCPAuthenticator, error) {
 	if len(key) == 0 {
-		return nil, fmt.Errorf("agent MCP bearer key is required")
+		return nil, fmt.Errorf("agent MCP signing key is required")
 	}
 	return &AgentMCPAuthenticator{key: append([]byte(nil), key...)}, nil
 }
 
 // AgentMCPHeaders returns the complete bearer and identity headers for one
-// validated agent session. It is intended for the local in-process bridge.
+// validated agent session without disclosing the signing key. It is intended
+// for the trusted local in-process bridge, not for untrusted callers to mint identities.
 func (authenticator *AgentMCPAuthenticator) AgentMCPHeaders(agentID string, sessionID string) (http.Header, error) {
 	if authenticator == nil {
 		return nil, fmt.Errorf("agent MCP authenticator is required")
@@ -49,14 +54,14 @@ func (authenticator *AgentMCPAuthenticator) AgentMCPHeaders(agentID string, sess
 		return nil, err
 	}
 	headers := make(http.Header, 3)
-	headers.Set(AgentMCPAuthorizationHeader, agentMCPBearerPrefix+string(authenticator.key))
+	headers.Set(AgentMCPAuthorizationHeader, agentMCPBearerPrefix+authenticator.sessionCredential(agentID, sessionID))
 	headers.Set(AgentMCPAgentIDHeader, agentID)
 	headers.Set(AgentMCPSessionIDHeader, sessionID)
 	return headers, nil
 }
 
 // AgentMCPHandler returns a streamable MCP HTTP handler that checks the bearer
-// key and identity headers before exposing CSF's private request identity.
+// credential against both identity headers before exposing CSF's private request identity.
 func (service *Service) AgentMCPHandler(authenticator *AgentMCPAuthenticator) http.Handler {
 	handler := service.MCPHandler()
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -77,10 +82,6 @@ func (authenticator *AgentMCPAuthenticator) authenticatedContext(request *http.R
 	if !ok || !strings.HasPrefix(authorization, agentMCPBearerPrefix) {
 		return nil, ErrUnauthorized
 	}
-	providedKey := []byte(strings.TrimPrefix(authorization, agentMCPBearerPrefix))
-	if subtle.ConstantTimeCompare(authenticator.key, providedKey) != 1 {
-		return nil, ErrUnauthorized
-	}
 	agentID, ok := agentMCPHeader(request, AgentMCPAgentIDHeader)
 	if !ok {
 		return nil, ErrUnauthorized
@@ -92,7 +93,19 @@ func (authenticator *AgentMCPAuthenticator) authenticatedContext(request *http.R
 	if err := validateAgentMCPIdentity(agentID, sessionID); err != nil {
 		return nil, ErrUnauthorized
 	}
+	providedCredential := strings.TrimPrefix(authorization, agentMCPBearerPrefix)
+	expectedCredential := authenticator.sessionCredential(agentID, sessionID)
+	if !hmac.Equal([]byte(expectedCredential), []byte(providedCredential)) {
+		return nil, ErrUnauthorized
+	}
 	return withVerifiedAgentIdentity(request.Context(), agentID, sessionID), nil
+}
+
+func (authenticator *AgentMCPAuthenticator) sessionCredential(agentID string, sessionID string) string {
+	mac := hmac.New(sha256.New, authenticator.key)
+	// Validated identities cannot contain NUL, so the domain and tuple are unambiguous.
+	_, _ = mac.Write([]byte(agentMCPCredentialDomain + "\x00" + agentID + "\x00" + sessionID))
+	return agentMCPCredentialPrefix + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
 
 func agentMCPHeader(request *http.Request, name string) (string, bool) {

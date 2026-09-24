@@ -6,50 +6,41 @@
 # server: git, a pinned git-lfs, and git-xet (xet-core's LFS custom transfer
 # agent) built from the exact upstream revision this component targets.
 #
-# Build context: the xetcas/ directory (nothing from the context is copied in;
-# the context is kept consistent with the other images so one compose file can
-# build both).
+# Build context: the xetcas/ directory. CI can supply the separately compiled
+# client as a named build context; normal builds compile the same recipe here.
 #
 #   docker build -f docker/Dockerfile.workbench -t xetcas-workbench .
 
-ARG RUST_VERSION=1.91
-ARG DEBIAN_RELEASE=bookworm
+ARG GIT_XET_BUILD_IMAGE=rust:1.91-bookworm@sha256:c1e5f19e773b7878c3f7a805dd00a495e747acbdc76fb2337a4ebf0418896b33
+ARG WORKBENCH_RUNTIME_IMAGE=debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251
+ARG GIT_XET_SOURCE=git-xet-builder
 
 # ---------------------------------------------------------------------------
 # Stage 1: build git-xet from the pinned xet-core revision.
 # ---------------------------------------------------------------------------
-FROM rust:${RUST_VERSION}-${DEBIAN_RELEASE} AS git-xet-builder
+FROM ${GIT_XET_BUILD_IMAGE} AS git-xet-toolchain
+
+COPY docker/workbench-client.sh /usr/local/bin/workbench-client
+RUN bash /usr/local/bin/workbench-client dependencies
+
+FROM git-xet-toolchain AS git-xet-builder
 
 # Pinned xet-core revision. This is the protocol reference for the whole
 # component: xetcasd is written against the CAS API this revision speaks.
 ARG XET_CORE_REPO=https://github.com/huggingface/xet-core
 ARG XET_CORE_REV=77fc84d3d077973dade91a216da5e6b4a1595ca0
 
-# git2 links against the system OpenSSL; cmake is needed by a few transitive
-# -sys crates.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        cmake \
-        libssl-dev \
-        pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-# --locked builds exactly the dependency set recorded in xet-core's Cargo.lock
-# at ${XET_CORE_REV}, so the agent binary is reproducible from the pin alone.
+# Both the default image build and the bounded CI preparation use this recipe.
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    cargo install \
-        --locked \
-        --root /out \
-        --git "${XET_CORE_REPO}" \
-        --rev "${XET_CORE_REV}" \
-        git_xet \
-    && /out/bin/git-xet --version
+    bash /usr/local/bin/workbench-client compile /out
+
+FROM ${GIT_XET_SOURCE} AS git-xet-source
 
 # ---------------------------------------------------------------------------
 # Stage 2: runtime workbench.
 # ---------------------------------------------------------------------------
-FROM debian:${DEBIAN_RELEASE}-slim AS runtime
+FROM ${WORKBENCH_RUNTIME_IMAGE} AS runtime
 
 ARG GIT_LFS_VERSION=3.7.1
 ARG GIT_LFS_SHA256_AMD64=1c0b6ee5200ca708c5cebebb18fdeb0e1c98f1af5c1a9cba205a4c0ab5a5ec08
@@ -85,7 +76,7 @@ RUN set -eux; \
     rm -rf /tmp/git-lfs.tar.gz "/tmp/git-lfs-${GIT_LFS_VERSION}"; \
     git-lfs version
 
-COPY --from=git-xet-builder /out/bin/git-xet /usr/local/bin/git-xet
+COPY --from=git-xet-source /out/bin/git-xet /usr/local/bin/git-xet
 
 # Non-root by default. /home/xet is a mount point for a named volume in the
 # demo compose file so `git config --global` and the xet cache survive across

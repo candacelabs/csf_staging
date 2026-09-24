@@ -13,7 +13,9 @@ term definitions; edges optionally carry a plain-language relationship. Nodes
 show their declared existing/planned status. Existing edges are solid and planned
 edges dotted. These are documentation statements, not runtime verification.
 
-This directory owns CSF's documentation language and diagrams; `tools/csf-language` is a generated root compatibility mirror, so edit this canonical source. The generated human reference is written directly to `csf/docs/generated/ontology_cgen.md`.
+This directory owns CSF's documentation language and diagrams. The monorepo
+builds these exported sources directly; there is no compatibility copy. The
+generated human reference is written to `csf/docs/generated/ontology_cgen.md`.
 The separate [architecture compiler](../architecture/README.md) checks typed
 process/scope declarations against selected Go source. These tools have distinct
 inputs and guarantees; documentation rendering does not perform source checks.

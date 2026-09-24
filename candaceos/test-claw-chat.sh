@@ -10,12 +10,65 @@ die() {
   exit 1
 }
 
+mode=${1:-all}
+[[ $# -le 1 ]] || die "usage: $0 [all|prepare-go-cache]"
+case "$mode" in
+  all|prepare-go-cache) ;;
+  *) die "usage: $0 [all|prepare-go-cache]" ;;
+esac
+
+sdk_packages=(
+  ./services/candaceos/harness/opencode
+  ./services/candaceos/httpapi
+  ./services/candaceos/webui
+  ./services/candaceos/operator
+)
+go_cache=${CANDACEOS_ACCEPTANCE_GO_CACHE:-}
+[[ "$mode" != prepare-go-cache || -n "$go_cache" ]] || \
+  die "prepare-go-cache requires CANDACEOS_ACCEPTANCE_GO_CACHE"
+go_cache_args=(--env GOCACHE=/tmp/go-build --env GOMODCACHE=/tmp/go-mod)
+if [[ -n "$go_cache" ]]; then
+  mkdir -p "$go_cache/build" "$go_cache/modules"
+  go_build_cache=$(CDPATH= cd -- "$go_cache/build" && pwd -P)
+  go_module_cache=$(CDPATH= cd -- "$go_cache/modules" && pwd -P)
+  go_cache_args=(
+    --env GOCACHE=/cache/build --env GOMODCACHE=/cache/modules
+    --volume "$go_build_cache:/cache/build"
+    --volume "$go_module_cache:/cache/modules"
+  )
+fi
+
 for command in curl docker grep mktemp openssl sed; do
   command -v "$command" >/dev/null || die "$command is required"
 done
 # Keep the daemon's diagnostic: a missing socket, permission failure, and a
 # failed daemon startup need different repairs, not an undifferentiated retry.
 docker info >/dev/null || die "the Docker daemon is not reachable"
+
+if [[ "$mode" == prepare-go-cache ]]; then
+  # Core copies this exact builder toolchain into its runtime image. Both
+  # phases use /src, CGO_ENABLED=0, and the same Go content-addressed caches.
+  go_image=$(sed -n 's/^FROM \(golang:[^ ]*\) AS toolchain$/\1/p' "$script_dir/Dockerfile.core")
+  [[ "$go_image" =~ ^golang:[a-zA-Z0-9._-]+@sha256:[a-f0-9]{64}$ ]] || \
+    die "Core builder must pin one Go image by digest"
+  printf 'candaceos Claw acceptance: prepare SDK and harness compilation only\n'
+  docker run --rm \
+    --read-only \
+    --user "$(id -u):$(id -g)" \
+    --tmpfs /tmp:rw,exec,nosuid,size=4g \
+    --env CGO_ENABLED=0 \
+    --env GOMAXPROCS=2 \
+    --env GOTOOLCHAIN=local \
+    --env GOFLAGS=-mod=readonly \
+    "${go_cache_args[@]}" \
+    --volume "$export_root:/src:ro" \
+    --workdir /src \
+    --entrypoint /usr/local/go/bin/go \
+    "$go_image" \
+    test -count=1 -run '^$' -p 1 "${sdk_packages[@]}"
+  exit 0
+fi
+
 [[ -r "$environment_projection" ]] || die "generated environment projection is missing"
 # shellcheck source=environment.generated.sh
 source "$environment_projection"
@@ -78,9 +131,16 @@ candaceos_environment_apply_profile "$candaceos_profile_demo"
 unset "$candaceos_env_openai_api_key" "$candaceos_env_anthropic_api_key" "$candaceos_env_openrouter_api_key"
 
 printf 'candaceos Claw acceptance: disposable demo-backed stack setup\n'
+build_args=(--build)
+if [[ -n "${CANDACEOS_ACCEPTANCE_IMAGE_ARCHIVES:-}" ]]; then
+  # CI prepares these exact images in separate jobs. Loading them never
+  # substitutes for any of the stack, network, browser, or SDK assertions.
+  "$script_dir/test-claw-images.sh" load "$CANDACEOS_ACCEPTANCE_IMAGE_ARCHIVES" "$project_name"
+  build_args=(--no-build)
+fi
 "${compose[@]}" --profile opencode config --quiet
 "${compose[@]}" --profile opencode up \
-  --detach --build --wait --wait-timeout 180 \
+  --detach "${build_args[@]}" --wait --wait-timeout 180 \
   postgres warden opencode core
 
 core_address=$("${compose[@]}" port core 7780)
@@ -239,8 +299,8 @@ docker run --rm \
   --tmpfs /tmp:rw,exec,nosuid,size=4g \
   --env CGO_ENABLED=0 \
   --env GOMAXPROCS=2 \
-  --env GOCACHE=/tmp/go-build \
-  --env GOMODCACHE=/tmp/go-mod \
+  --env GOTOOLCHAIN=local \
+  "${go_cache_args[@]}" \
   --env GOFLAGS=-mod=readonly \
   --env CANDACEOS_OPENCODE_CONTRACT_URL=http://opencode:4096 \
   --env CANDACEOS_OPENCODE_CONTRACT_USERNAME \
@@ -249,10 +309,6 @@ docker run --rm \
   --workdir /src \
   --entrypoint /usr/local/go/bin/go \
   "$core_image" \
-  test -p 1 \
-    ./services/candaceos/harness/opencode \
-    ./services/candaceos/httpapi \
-    ./services/candaceos/webui \
-    ./services/candaceos/operator
+  test -count=1 -p 1 "${sdk_packages[@]}"
 
 printf 'candaceos Claw acceptance: PASS\n'

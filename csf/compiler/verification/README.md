@@ -11,7 +11,8 @@ cd csf/compiler/verification
 lake build
 ```
 
-The next implementation must define the source architecture semantics, the
+Formal verification is intended to cover the grammar and compiler. The next
+implementation must define the accepted grammar and source architecture semantics, the
 emitted model semantics, the correspondence to the OCaml compiler output, and
 the theorem checked by Lean. Only a completed proof and its audited assumptions
 can justify adding a verified result.

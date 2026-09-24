@@ -22,34 +22,20 @@ let test_actual_grammar grammar =
   let source = generated grammar in
   expect "configured ownership header is first" (String.starts_with
     ~prefix:(Codegen_header.render Codegen_header.Ocaml) source);
-  List.iter (fun fragment -> expect ("missing generated API: " ^ fragment) (contains source fragment)) [
-    "module Rule = struct";
-    "module Terminal = struct";
-    "let of_string : string -> t option";
-    "let name : t -> string";
-    "let constructor_name : t -> string";
-    "\"$terminal\" -> Some Terminal";
-    "\"identifier\" -> Some Identifier";
-    "\"integer\" -> Some Integer";
-    "\"string\" -> Some String";
-    "\"architecture\" -> Some Architecture";
-    "\"->\" -> Some Arrow";
-    "\";\" -> Some Semicolon";
-    "\"{\" -> Some LeftBrace";
-    "\"}\" -> Some RightBrace";
-    "let state : Terminal.t -> Model.state option";
-    "Terminal.Existing -> Some Model.Existing";
-    "Terminal.Planned -> Some Model.Planned";
-    "state_terminal : Model.state -> Terminal.t";
-    "Model.Existing -> Terminal.Existing";
-    "Model.Planned -> Terminal.Planned";
-    "let process_kind : Terminal.t -> Model.process_kind option";
-    "Terminal.Go -> Some Model.Go";
-    "let lifecycle : Terminal.t -> Model.lifecycle option";
-    "let role : Terminal.t -> Model.role option";
-    "let transport : Terminal.t -> Model.transport option";
-  ];
-  expect "mixed verification rule is not a plain enum" (not (contains source "let verification :"));
+  (* Exercise the compiled projection against the current grammar's inventory.
+     Grammar edits must not require maintaining a second vocabulary in this test.
+     Fixed fixtures below own tests of the generator's individual behaviors. *)
+  let parsed = Frontend_grammar.parse ~filename:"language.ebnf" grammar in
+  let roundtrip namespace of_string name spelling =
+    match of_string spelling with
+    | None -> failwith ("missing generated " ^ namespace ^ ": " ^ spelling)
+    | Some symbol -> expect ("generated " ^ namespace ^ " round trip: " ^ spelling)
+        (name symbol = spelling) in
+  let rules = Hashtbl.to_seq_keys parsed.rules |> List.of_seq in
+  List.iter (roundtrip "rule" Syntax_cgen.Rule.of_string Syntax_cgen.Rule.name)
+    (rules @ Frontend_grammar.builtin_names);
+  List.iter (roundtrip "terminal" Syntax_cgen.Terminal.of_string Syntax_cgen.Terminal.name)
+    parsed.terminals;
   expect "generation is deterministic" (source = generated grammar)
 
 let test_grammar_drives_symbols () =
@@ -62,6 +48,8 @@ let test_grammar_drives_symbols () =
   let unknown = generated "start = widget, identifier; widget = \"custom\";" in
   expect "unknown grammar enum is discovered" (contains unknown "let widget : Terminal.t -> Model.widget option");
   expect "Model compatibility is left to its compiler" (contains unknown "Terminal.Custom -> Some Model.Custom");
+  let mixed = generated "start = entry; entry = \"named\", identifier | \"anonymous\";" in
+  expect "mixed rule is not a plain enum" (not (contains mixed "let entry :"));
   let symbols = generated "start = \"=\", identifier;" in
   expect "generic punctuation has stable hex name" (contains symbols "\"=\" -> Some Symbol_3D");
   let lexical = generated "start = identifier;" in

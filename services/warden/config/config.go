@@ -61,10 +61,14 @@ const (
 // Config is the fully-resolved warden node configuration. It is safe to copy
 // and to log via Redacted()/String() (which strip the SMTP password).
 type Config struct {
-	NodeID   string         `yaml:"node_id"`
-	Bind     string         `yaml:"bind"`      // HTTP listen address, e.g. ":7717"
-	DataDir  string         `yaml:"data_dir"`  // election state lives at <DataDir>/state.json
-	Peers    []warden.Node  `yaml:"peers"`     // full member SEED (voter set to start from), including self
+	NodeID  string        `yaml:"node_id"`
+	Bind    string        `yaml:"bind"`     // HTTP listen address, e.g. ":7717"
+	DataDir string        `yaml:"data_dir"` // election state lives at <DataDir>/state.json
+	Peers   []warden.Node `yaml:"peers"`    // full member SEED (voter set to start from), including self
+	// LeaderID is an optional configured default leader from the static peer
+	// list. An empty value preserves the legacy election and leader-watchdog
+	// behavior. Env override: WARDEN_LEADER_ID.
+	LeaderID string         `yaml:"leader_id"`
 	Timing   TimingConfig   `yaml:"timing"`    // election/liveness durations
 	Watchdog WatchdogConfig `yaml:"watchdog"`  // incident engine tuning
 	Notify   NotifyConfig   `yaml:"notify"`    // operator notification delivery
@@ -308,6 +312,14 @@ func (c Config) Validate() error {
 	if err := c.validateDiscovery(selfFound); err != nil {
 		return err
 	}
+	if c.LeaderID != "" {
+		if c.Discovery.Mode != DiscoveryModeStatic {
+			return errors.New("leader_id requires discovery.mode=static")
+		}
+		if !seen[warden.NodeID(c.LeaderID)] {
+			return fmt.Errorf("leader_id %q is not present in peers", c.LeaderID)
+		}
+	}
 
 	t := c.Timing
 	for _, d := range []struct {
@@ -446,13 +458,13 @@ func (c Config) String() string {
 		recovery = strconv.FormatBool(*r.Watchdog.NotifyRecovery)
 	}
 	return fmt.Sprintf(
-		"node_id=%s bind=%s advertise_addr=%s data_dir=%s peers=%d log_level=%s "+
+		"node_id=%s bind=%s advertise_addr=%s data_dir=%s peers=%d leader_id=%s log_level=%s "+
 			"notify{mode=%s file=%q smtp_host=%s smtp_port=%d smtp_from=%s smtp_to=%v smtp_pass=<redacted>} "+
 			"timing{heartbeat=%s suspect=%s dead=%s election=[%s,%s] rpc_timeout=%s} "+
 			"watchdog{cooldown=%s notify_recovery=%s max_incidents=%d} "+
 			"discovery{mode=%s cluster_id=%s join_stability=%s remove_after=%s file=%q file_poll=%s "+
 			"ts{socket=%s tag=%s host_pattern=%q poll=%s}}",
-		r.NodeID, r.Bind, r.AdvertiseAddr(), r.DataDir, len(r.Peers), r.LogLevel,
+		r.NodeID, r.Bind, r.AdvertiseAddr(), r.DataDir, len(r.Peers), r.LeaderID, r.LogLevel,
 		r.Notify.Mode, r.Notify.File, r.Notify.SMTPHost, r.Notify.SMTPPort,
 		r.Notify.SMTPFrom, r.Notify.SMTPTo,
 		r.Timing.HeartbeatInterval, r.Timing.SuspectAfter, r.Timing.DeadAfter,
@@ -625,6 +637,7 @@ func applyEnv(cfg *Config, getenv func(name string) string) error {
 	envString(getenv, envBind, &cfg.Bind)
 	envString(getenv, envDataDir, &cfg.DataDir)
 	envString(getenv, envLogLevel, &cfg.LogLevel)
+	envString(getenv, envLeaderID, &cfg.LeaderID)
 
 	if v := strings.TrimSpace(getenv(envPeers)); v != "" {
 		peers, err := parsePeers(v)

@@ -87,7 +87,7 @@ func (m *Manager) leaderPeerStatus(now time.Time, lastContact time.Time) warden.
 // otherwise it returns a local, non-authoritative view built from this node's
 // own heartbeat receipts.
 func (m *Manager) followerView(now time.Time) warden.ClusterView {
-	if m.cachedView != nil && m.leaderID != "" &&
+	if m.cfg.LeaderID == "" && m.cachedView != nil && m.leaderID != "" &&
 		m.cachedView.LeaderID == m.leaderID &&
 		now.Sub(m.cachedViewAt) < m.cfg.ViewFreshFor {
 		v := copyView(*m.cachedView)
@@ -141,10 +141,17 @@ func (m *Manager) followerView(now time.Time) warden.ClusterView {
 // followerLeaderStatus classifies the leader from this follower's own
 // heartbeat-receipt timestamps.
 func (m *Manager) followerLeaderStatus(now time.Time) warden.PeerStatus {
-	if m.lastLeaderContact.IsZero() {
+	ref := m.lastLeaderContact
+	if ref.IsZero() && m.cfg.LeaderID != "" {
+		ref = m.startedAt
+	}
+	if ref.IsZero() {
 		return warden.StatusUnknown
 	}
-	age := now.Sub(m.lastLeaderContact)
+	age := now.Sub(ref)
+	if m.lastLeaderContact.IsZero() && age < m.cfg.SuspectAfter {
+		return warden.StatusUnknown
+	}
 	switch {
 	case age >= m.cfg.DeadAfter:
 		return warden.StatusDead

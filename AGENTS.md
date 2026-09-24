@@ -33,9 +33,10 @@ Three consequences, and acting against any of them is expensive:
   every future export until an operator investigates.
 - **A fix belongs upstream.** If you can reach the canonical monorepo, make the
   change under its `candace/` folder and let the next source `main` push propose a snapshot PR.
-  If you cannot reach it, say exactly that and stop. Never commit here, never
-  open a PR against this repository, and never fork and patch it as a
-  substitute for the upstream change.
+  If you cannot reach it, report that limitation and describe the required
+  canonical fix. Do not commit fixes to this generated destination or open
+  hand-written source PRs against it. Consumers may vendor and adapt their own
+  checkout; those customizations do not update the canonical snapshot.
 - **Version identity is immutable.** Use a semantic-version tag for consumption.
   When tracing exact source behavior, cite the
   `export-<sha12>` tag or the source revision in `.candace-export.json`, never
@@ -207,10 +208,10 @@ go test ./...
 go test ./services/warden/...
 ```
 
-That is an authority CI exercises, not a claim: `.github/workflows/ci.yml`'s
-`Go build and test` job runs the first two verbatim in the pinned golang
-container, and it is the only job in either repository that reaches
-`//app/warden/e2e:e2e_test`.
+The destination's `.github/workflows/ci.yml` runs the complete build, a
+vet/API check, and four test shards in the pinned Go container. Those shards
+partition the full `go list ./...` inventory, including Warden end-to-end
+tests and other packages whose Bazel tests are tagged `manual`.
 
 The Rust workspace also builds with plain Cargo from `xetcas/`, which is the
 path its demo, container images, and `just` targets take —

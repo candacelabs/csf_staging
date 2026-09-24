@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/candacelabs/csf/services/warden"
+	"github.com/candacelabs/csf/services/warden/internal/transportidentity"
 	"github.com/candacelabs/csf/services/warden/store"
 	"github.com/candacelabs/csf/services/warden/testclock"
 )
@@ -420,7 +421,11 @@ func (c *cluster) SendHeartbeat(ctx context.Context, peer warden.Node, req warde
 	if !ok {
 		return warden.HeartbeatResponse{}, errUnreachable
 	}
-	return tgt.HandleHeartbeat(ctx, req), nil
+	return tgt.HandleHeartbeat(heartbeatContext(ctx, string(req.LeaderID)), req), nil
+}
+
+func heartbeatContext(ctx context.Context, senderAddr string) context.Context {
+	return transportidentity.WithPeerAddress(ctx, senderAddr)
 }
 
 // Identify implements warden.ITransport for the harness. Reachability follows

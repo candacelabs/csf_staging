@@ -45,7 +45,11 @@ var permissionToolCallIDFields = []string{"toolCallId", "tool_call_id"}
 type Config struct {
 	GitHubToken      string
 	WorkingDirectory string
-	Logger           *slog.Logger
+	// HistorySourceDirectory is a read-only source tree copied into a
+	// wrapper-owned disposable Copilot home before the SDK starts. It is the
+	// only mode in which the history APIs are enabled.
+	HistorySourceDirectory string
+	Logger                 *slog.Logger
 	// ShutdownTimeout bounds process-owner cleanup after the adapter has made
 	// its per-session Disconnect attempts.
 	ShutdownTimeout time.Duration
@@ -63,18 +67,22 @@ type MCPServerResolver func(ctx context.Context, spec copilotadapter.BridgeSessi
 
 // CopilotBridge drives one Copilot CLI process for every adapter session.
 type CopilotBridge struct {
-	client             *copilot.Client
-	mcpServers         map[string]copilot.MCPServerConfig
-	resolveMCPServers  MCPServerResolver
-	logger             *slog.Logger
-	shutdownTimeout    time.Duration
-	forceStop          func()
-	listModels         func(ctx context.Context, params *rpc.ModelsListRequest) (*rpc.ModelList, error)
-	getSessionMetadata func(ctx context.Context, sessionID string) (*copilot.SessionMetadata, error)
-	resumeSession      func(ctx context.Context, sessionID string, config *copilot.ResumeSessionConfig) (*copilot.Session, error)
-	disconnects        *disconnectTracker
-	closeOnce          sync.Once
-	closeErr           error
+	client                   *copilot.Client
+	mcpServers               map[string]copilot.MCPServerConfig
+	resolveMCPServers        MCPServerResolver
+	logger                   *slog.Logger
+	shutdownTimeout          time.Duration
+	forceStop                func()
+	listModels               func(ctx context.Context, params *rpc.ModelsListRequest) (*rpc.ModelList, error)
+	listSessions             func(ctx context.Context, filter *copilot.SessionListFilter) ([]copilot.SessionMetadata, error)
+	getSessionMetadata       func(ctx context.Context, sessionID string) (*copilot.SessionMetadata, error)
+	resumeSession            func(ctx context.Context, sessionID string, config *copilot.ResumeSessionConfig) (*copilot.Session, error)
+	readHistory              func(ctx context.Context, metadata copilot.SessionMetadata) ([]copilot.SessionEvent, error)
+	historySnapshotDirectory string
+	cleanupHistory           func() error
+	disconnects              *disconnectTracker
+	closeOnce                sync.Once
+	closeErr                 error
 }
 
 // NewCopilotBridge starts the CLI client. The CLI is spawned headless over stdio by the SDK.
@@ -86,19 +94,36 @@ func NewCopilotBridge(ctx context.Context, config Config) (*CopilotBridge, error
 	if logger == nil {
 		logger = slog.Default()
 	}
-	client := copilot.NewClient(&copilot.ClientOptions{
+	historySnapshotDirectory, cleanupHistory, err := prepareHistoryHome(ctx, config.HistorySourceDirectory)
+	if err != nil {
+		return nil, err
+	}
+	clientOptions := &copilot.ClientOptions{
 		GitHubToken:      config.GitHubToken,
 		WorkingDirectory: config.WorkingDirectory,
-	})
+	}
+	if historySnapshotDirectory != "" {
+		clientOptions.BaseDirectory = historySnapshotDirectory
+		clientOptions.Mode = copilot.ModeEmpty
+		clientOptions.UseLoggedInUser = copilot.Bool(false)
+	}
+	client := copilot.NewClient(clientOptions)
 	if err := client.Start(ctx); err != nil {
+		if cleanupHistory != nil {
+			_ = cleanupHistory()
+		}
 		return nil, fmt.Errorf("copilot bridge: start the CLI client: %w", err)
 	}
-	return &CopilotBridge{
+	disconnects := newDisconnectTracker()
+	bridge := &CopilotBridge{
 		client: client, logger: logger, shutdownTimeout: config.ShutdownTimeout, mcpServers: config.MCPServers,
-		resolveMCPServers: config.MCPServerResolver,
-		listModels:        client.RPC.Models.List, forceStop: client.ForceStop, getSessionMetadata: client.GetSessionMetadata,
-		resumeSession: client.ResumeSession, disconnects: newDisconnectTracker(),
-	}, nil
+		resolveMCPServers: config.MCPServerResolver, listModels: client.RPC.Models.List,
+		listSessions: client.ListSessions, forceStop: client.ForceStop, getSessionMetadata: client.GetSessionMetadata,
+		resumeSession: client.ResumeSession, disconnects: disconnects,
+		historySnapshotDirectory: historySnapshotDirectory, cleanupHistory: cleanupHistory,
+	}
+	bridge.readHistory = bridge.readHistoryFromSDK
+	return bridge, nil
 }
 
 func (bridge *CopilotBridge) mcpServersFor(ctx context.Context, spec copilotadapter.BridgeSessionSpec) (map[string]copilot.MCPServerConfig, error) {
@@ -142,6 +167,11 @@ func (bridge *CopilotBridge) Close() error {
 				"copilot bridge: %d SDK shutdown worker(s) did not drain after force stop: %w",
 				bridge.disconnects.activeCount(), shutdownContext.Err(),
 			)
+		}
+		if bridge.cleanupHistory != nil {
+			if cleanupErr := bridge.cleanupHistory(); cleanupErr != nil {
+				bridge.closeErr = errors.Join(bridge.closeErr, fmt.Errorf("copilot bridge: remove history snapshot: %w", cleanupErr))
+			}
 		}
 	})
 	return bridge.closeErr

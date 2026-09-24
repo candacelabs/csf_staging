@@ -11,9 +11,17 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/candacelabs/csf/services/warden"
+	"github.com/candacelabs/csf/services/warden/internal/mocks"
 )
 
 const peerAddr = "203.0.113.11:7717"
+
+type classifiedDeliveryError struct {
+	retryable bool
+}
+
+func (deliveryError classifiedDeliveryError) Error() string   { return "classified delivery failure" }
+func (deliveryError classifiedDeliveryError) Retryable() bool { return deliveryError.retryable }
 
 // driver drives the watchdog state machine synchronously for deterministic
 // white-box tests: step() runs one evaluation and then settles all delivery
@@ -104,6 +112,75 @@ var _ = Describe("Watchdog (synchronous driver)", func() {
 		Expect(d.w.Incidents()).To(HaveLen(1))
 		wantMsg := "peer node-a (203.0.113.11:7717) declared dead by leader node-c (term 7); last seen "
 		Expect(inc.Message).To(HavePrefix(wantMsg))
+	})
+
+	Describe("configured default leader observation", func() {
+		It("reports only a locally observed unreachable configured leader without promoting the follower", func() {
+			d, src, rec, _ := newDriver(Config{LeaderID: "node-a"})
+			seen := baseTime.Add(-time.Minute)
+			view := configuredLeaderFollowerView(7, "node-a",
+				peer("node-a", peerAddr, warden.StatusDead, seen),
+				peer("node-b", "203.0.113.12:7717", warden.StatusDead, seen),
+			)
+			src.set(view)
+
+			d.step()
+			d.step()
+
+			sent := rec.Sent()
+			Expect(sent).To(HaveLen(1), "one local unreachability episode must notify once")
+			Expect(sent[0].Peer.ID).To(Equal(warden.NodeID("node-a")))
+			Expect(sent[0].ReportedBy).To(Equal(selfID))
+			Expect(sent[0].Message).To(ContainSubstring("observed unreachable by follower node-c"))
+			Expect(sent[0].Message).NotTo(ContainSubstring("declared dead"))
+			Expect(d.w.Incidents()).To(HaveLen(1), "the non-leader peer must never produce an incident")
+			Expect(src.View()).To(Equal(view), "watchdog must not promote or make the follower authoritative")
+		})
+
+		It("records recovery from a local leader observation through the normal episode path", func() {
+			d, src, rec, clk := newDriver(Config{LeaderID: "node-a", NotifyRecovery: true})
+			seen := baseTime.Add(-time.Minute)
+			src.set(configuredLeaderFollowerView(7, "node-a", peer("node-a", peerAddr, warden.StatusDead, seen)))
+			d.step()
+
+			clk.Advance(90 * time.Second)
+			src.set(configuredLeaderFollowerView(7, "node-a", peer("node-a", peerAddr, warden.StatusAlive, clk.Now())))
+			d.step()
+
+			sent := rec.Sent()
+			Expect(sent).To(HaveLen(2))
+			Expect(sent[1].Type).To(Equal(warden.IncidentPeerRecovered))
+			Expect(sent[1].ReportedBy).To(Equal(selfID))
+			Expect(sent[1].Message).To(ContainSubstring("observed reachable again by follower node-c"))
+		})
+
+		It("retries a configured leader alert without duplicating its incident", func() {
+			d, src, rec, _ := newDriverFailN(Config{LeaderID: "node-a"}, 2)
+			seen := baseTime.Add(-time.Minute)
+			src.set(configuredLeaderFollowerView(7, "node-a", peer("node-a", peerAddr, warden.StatusDead, seen)))
+
+			d.step()
+			d.step()
+			d.step()
+			d.step()
+
+			Expect(rec.Sent()).To(HaveLen(1), "a successful retry must settle the original episode")
+			Expect(d.w.Incidents()).To(HaveLen(1), "retry must not record another incident")
+		})
+
+		It("ignores cached leader reports and local views whose leader differs from configuration", func() {
+			d, src, rec, _ := newDriver(Config{LeaderID: "node-a"})
+			seen := baseTime.Add(-time.Minute)
+			cached := followerView(7, "node-a", peer("node-a", peerAddr, warden.StatusDead, seen))
+			src.set(cached)
+			d.step()
+
+			src.set(configuredLeaderFollowerView(7, "node-b", peer("node-a", peerAddr, warden.StatusDead, seen)))
+			d.step()
+
+			Expect(rec.Sent()).To(BeEmpty())
+			Expect(d.w.Incidents()).To(BeEmpty())
+		})
 	})
 
 	// TestRecoveryNotification (enabled)
@@ -241,6 +318,32 @@ var _ = Describe("Watchdog (synchronous driver)", func() {
 		Expect(rec.Sent()).To(HaveLen(1), "no duplicate after success")
 		Expect(d.w.Incidents()).To(HaveLen(1), "incident recorded once")
 	})
+
+	DescribeTable("honors notifier retry classification through wrapped errors",
+		func(retryable bool, expectedAttempts int) {
+			d, src, _, clk := newDriver(Config{})
+			notifier := mocks.NewMockINotifier(gomock.NewController(GinkgoT()))
+			notifier.EXPECT().Notify(gomock.Any(), gomock.Any()).Return(
+				fmt.Errorf("notification: %w", classifiedDeliveryError{retryable: retryable}),
+			).Times(expectedAttempts)
+			d.w.notifier = notifier
+			src.set(leaderView(7, peer("node-a", peerAddr, warden.StatusDead, baseTime)))
+			d.step()
+			d.step()
+			Expect(d.w.Incidents()).To(HaveLen(1))
+			if retryable {
+				Expect(d.st.pending).To(HaveLen(1))
+				Expect(d.st.cooldowns).To(BeEmpty())
+			} else {
+				Expect(d.st.pending).To(BeEmpty())
+				Expect(d.st.inFlight).To(BeEmpty())
+				key := cooldownKey{peer: "node-a", typ: warden.IncidentPeerDead}
+				Expect(d.st.cooldowns[key]).To(Equal(clk.Now()))
+			}
+		},
+		Entry("terminal or ambiguous acceptance is not blindly retried", false, 1),
+		Entry("known retryable failure stays pending", true, 2),
+	)
 
 	// TestSuspectUnknownProduceNothing
 	It("produces nothing for suspect and unknown peers", func() {

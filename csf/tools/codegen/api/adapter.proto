@@ -5,9 +5,14 @@ option go_package = "github.com/candacelabs/csf/csf/gen;brainspineapi";
 
 import "google/api/annotations.proto";
 import "candace/brainspine/v1/brainspine.proto";
+import "candace/email/v1/email.proto";
 
 // Candace's owned adapter API, not a reverse-engineered LITHE vendor protocol.
 service Research {
+  // Email the configured operator. Requires an authenticated agent session. The host automatically attaches Spine provenance and retains a delivery receipt; SMTP acceptance does not prove inbox delivery. Do not blindly retry an unknown outcome.
+  rpc SendEmail(candace.email.v1.SendEmailRequest) returns (candace.email.v1.SendEmailResponse) {
+    option (google.api.http) = {post: "/api/email/send" body: "*"};
+  }
   // Read the signed caller's durable Langfuse and OpenSearch references. The response contains opaque secret references, never secret values.
   rpc GetOwnAgentConfiguration(candace.brainspine.v1.GetOwnAgentConfigurationRequest) returns (candace.brainspine.v1.GetOwnAgentConfigurationResponse) {
     option (google.api.http) = {post: "/api/agents/configuration/get" body: "*"};
@@ -67,6 +72,10 @@ service Research {
   // Add a source document so people can find and cite it later.
   rpc IngestDocument(candace.brainspine.v1.IngestDocumentRequest) returns (candace.brainspine.v1.IngestDocumentResponse) {
     option (google.api.http) = {post: "/api/knowledge/documents" body: "*"};
+  }
+  // Explain the pinned CSF contract and index explicitly selected onboarding sources for retrieval.
+  rpc LearnAboutCSF(candace.brainspine.v1.LearnAboutCSFRequest) returns (candace.brainspine.v1.LearnAboutCSFResponse) {
+    option (google.api.http) = {post: "/api/onboarding/learn" body: "*"};
   }
   // Open one saved source document and read its words.
   rpc GetDocument(candace.brainspine.v1.GetDocumentRequest) returns (candace.brainspine.v1.GetDocumentResponse) {
