@@ -26,7 +26,8 @@ at this root.
 
 Three consequences, and acting against any of them is expensive:
 
-- **No change lands here.** Snapshot updates arrive as ready PRs from `candace-export` against `main`.
+- **No change lands here.** Snapshot updates arrive as ready PRs against `main`,
+  from `candace-export` for staging or `candace-release` for public releases.
   Source fixes belong in the canonical repository. The exporter compares the destination
   byte-for-byte against the snapshot it last published and halts on any
   divergence, so a commit made here is not merely overwritten later — it wedges

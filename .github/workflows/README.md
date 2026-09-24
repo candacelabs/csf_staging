@@ -43,7 +43,8 @@ broken here, because here it is a repository rather than a subdirectory: the
 module root moves, `candaceos/` sits at the top level, and consumers take this
 tree as a Bazel module. Every job here asks that question and nothing else:
 `ci.yml` checks the runtime packages; `csfc.yml` checks the independent compiler
-module and compiles its Lean verifier stub. Neither deploys anything.
+module and compiles its Lean verifier stub. An optional `notify_release` job in
+the existing CI dispatches the canonical publisher after a public `main` push.
 
 Three inert workflow copies that predate this directory were folded into it and
 deleted: `blog-site/.github/workflows/pages.yml`, `pkg/pgmem/.github/workflows/
@@ -90,8 +91,16 @@ this repository publishes a website any more.
 
 ## Operator prerequisites
 
-For a public destination, every job runs on a GitHub-hosted runner from a
-`contents: read` checkout and needs no private runner or application credential.
+For a public destination, verification jobs run on GitHub-hosted runners from a
+`contents: read` checkout and need no private runner or application credential.
+The operator-approved `notify_release` exception uses no checkout and an empty
+`GITHUB_TOKEN` permission set. It runs only for public `main` pushes when the
+`CSF_RELEASE_SOURCE_REPOSITORY` variable names the canonical source repository.
+Its `CSF_RELEASE_DISPATCH_TOKEN` secret must have only Actions write on that
+one source repository. It dispatches `publish-component-snapshots.yml` on source
+`main` with `release_only: true`; it cannot write destination content. Keep the
+variable unset in other consumers. Missing or rejected authentication fails the
+configured job visibly; rerun it after repairing or rotating the token.
 Repository visibility is an operator-controlled publication decision; these
 workflows never change it. The one prerequisite
 that used to live here — Pages source, custom domain, DNS — retired with
