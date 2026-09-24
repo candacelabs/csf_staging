@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="../../../docs/assets/gotth-live-logo.svg" width="590" alt="gotth-live: even robots go through a gotth phase">
+</div>
+
 # Quickstart
 
 At the end of this page you have a live page: a number that lives in a Go

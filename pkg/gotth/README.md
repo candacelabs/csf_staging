@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>gotth-live</h1>
+  <img src="../../docs/assets/gotth-live-logo.svg" width="590" alt="gotth-live: even robots go through a gotth phase">
   <p><b>Server-driven live user interfaces from Go. State and rendering stay in your process; the browser holds one WebSocket per tab.</b></p>
   <p>
     <a href="../../LICENSE"><img src="../../docs/assets/badge-license.svg" alt="license: Apache-2.0"></a>
