@@ -28,6 +28,39 @@ permissions:
   contents: read
 
 jobs:
+  notify_release:
+    name: Notify publisher of merged snapshot
+    # Operator-approved exception: one Actions-write-only dispatch credential.
+    # No checkout, PR execution, destination write, or periodic trigger.
+    if: >-
+      github.event.repository.private == false &&
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      vars.CSF_RELEASE_SOURCE_REPOSITORY != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Dispatch the existing source publisher
+        env:
+          GH_TOKEN: ${{ secrets.CSF_RELEASE_DISPATCH_TOKEN }}
+          GH_HOST: github.com
+          RELEASE_SOURCE_REPOSITORY: ${{ vars.CSF_RELEASE_SOURCE_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo 'CSF_RELEASE_DISPATCH_TOKEN must grant Actions write on the source repository.' >&2
+            exit 1
+          fi
+          if [[ ! "$RELEASE_SOURCE_REPOSITORY" =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_][A-Za-z0-9_.-]*$ ]]; then
+            echo 'CSF_RELEASE_SOURCE_REPOSITORY must be an owner/repository name.' >&2
+            exit 1
+          fi
+          gh api --method POST \
+            "repos/$RELEASE_SOURCE_REPOSITORY/actions/workflows/publish-component-snapshots.yml/dispatches" \
+            --input - <<'JSON'
+          {"ref":"main","inputs":{"release_only":true}}
+          JSON
+
   identifiers:
     name: Operator identifiers
     # Cheapest job in the file and the one whose failure matters most, so it

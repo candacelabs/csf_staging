@@ -35,6 +35,10 @@ The name comes from the architecture that shaped it. In LITHE
 partitioned computer. CSF is the fluid around them: the housekeeping layer that
 carries tools, records and experiments between decisions.
 
+![LITHE system architecture: Brain, Spine, Housekeeping and Transport on a Raspberry Pi, with a 1-DOF robot demonstration.](docs/assets/lithe-system-architecture.png)
+
+*LITHE, Figure 2 ([Lim and Clites, 2026](#ref-lithe)).*
+
 This repository is one Go module with a root Bazel build and the separate
 [`csfc` compiler build](csf/compiler/README.md): the public half of a private
 infrastructure monorepo, published whole. It is not a framework and not a grab
@@ -58,7 +62,7 @@ reviewed snapshot and use the examples shipped with it. The Go import is
 claim for earlier experimental CSF interfaces.
 
 First-party source is Apache-2.0. Dependencies, vendor simulator images and
-externally hosted paper figures retain their own licenses.
+paper figures retain their own licenses.
 
 ## 2. Why CSF: no IPC inside CPU 0
 
