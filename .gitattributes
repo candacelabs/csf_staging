@@ -17,3 +17,10 @@ services/copilot-adapter/storedb/db.go linguist-generated=true
 services/copilot-adapter/storedb/models.go linguist-generated=true
 services/copilot-adapter/storedb/querier.go linguist-generated=true
 services/copilot-adapter/ui/src/api/*schema.d.ts linguist-generated=true
+
+# EBNF and Tree-sitter compiler projections; checked by highlighting gates.
+csf/editor/tree-sitter-csf/src/** linguist-generated=true
+csf/editor/tree-sitter-csf/queries/highlights.scm linguist-generated=true
+
+# dis environment projected by the native OCaml generator.
+.dis/Dockerfile linguist-generated=true

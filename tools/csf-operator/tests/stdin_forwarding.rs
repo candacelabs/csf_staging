@@ -39,8 +39,8 @@ fn call_forwards_piped_json_through_the_system_runner() {
     fs::set_permissions(&docker, fs::Permissions::from_mode(0o755)).unwrap();
 
     let input = b"{\"query\":\"hello\"}\n";
-    let mut child = Command::new(env!("CARGO_BIN_EXE_candace"))
-        .args(["csf", "call", "Search"])
+    let mut child = Command::new(env!("CARGO_BIN_EXE_csf"))
+        .args(["call", "Search"])
         .env(
             "PATH",
             format!("{}:{}", bin.display(), std::env::var("PATH").unwrap()),

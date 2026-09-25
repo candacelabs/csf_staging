@@ -7,6 +7,7 @@ load("@rules_go//go:def.bzl", "go_test")
 exports_files(
     [
         "deps.bzl",
+        "execution_image.txt",
         "versions.bzl",
     ],
     visibility = ["//visibility:public"],

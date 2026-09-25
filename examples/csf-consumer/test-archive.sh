@@ -15,7 +15,7 @@ consumer_output=$(realpath -m "$2")
 [[ -f "$consumer_archive" ]] || consumer_die 'archive does not exist'
 [[ ! -e "$consumer_output" ]] || consumer_die 'output directory must not already exist'
 consumer_prefix=$(tar -tzf "$consumer_archive" | awk -F/ 'NF { print $1 }' | sort -u)
-[[ "$consumer_prefix" =~ ^candace-[0-9a-f]+$ ]] || consumer_die 'expected one revision-named candace archive root'
+[[ "$consumer_prefix" =~ ^csf-[0-9a-f]{12}$ ]] || consumer_die 'expected one revision-named CSF archive root'
 mkdir -p "$consumer_output"
 tar -xzf "$consumer_archive" -C "$consumer_output"
 consumer_module="$consumer_output/$consumer_prefix"

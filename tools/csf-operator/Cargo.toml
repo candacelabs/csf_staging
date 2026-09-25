@@ -6,7 +6,7 @@ rust-version = "1.91"
 publish = false
 
 [[bin]]
-name = "candace"
+name = "csf"
 path = "src/main.rs"
 
 [dependencies]

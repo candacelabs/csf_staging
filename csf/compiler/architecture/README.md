@@ -55,6 +55,12 @@ also requires its corresponding `Model` type; OCaml compilation checks that
 agreement in both directions. Missing inverse enum cases are compilation errors.
 Grammar generation cannot invent the meaning of a new concept.
 
+## Syntax highlighting
+
+[Editor support](../../editor/README.md) derives a Tree-sitter parser and highlight
+queries from this same EBNF for Neovim and rendered documentation. The native
+`highlight_codegen_test` rejects drift in those committed projections.
+
 ## Extend the language
 
 Consumers may adapt the language in their own vendored or forked CSF checkout.

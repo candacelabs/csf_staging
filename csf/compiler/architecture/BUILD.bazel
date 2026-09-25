@@ -404,3 +404,66 @@ ocaml_test(
     data = ["language.ebnf"],
     main = ":Symbol_codegen_test",
 )
+
+ocaml_module(
+    name = "Highlight_codegen",
+    struct = "highlight_codegen.ml",
+    deps = [
+        ":Codegen_header",
+        ":Frontend_grammar",
+        ":Frontend_lexer",
+        ":Model",
+        "@opam.yojson//lib",
+    ],
+)
+
+ocaml_module(
+    name = "Highlight_codegen_main",
+    struct = "highlight_codegen_main.ml",
+    deps = [
+        ":Frontend_lexer",
+        ":Highlight_codegen",
+        ":Model",
+    ],
+)
+
+ocaml_binary(
+    name = "highlight_codegen_native",
+    main = ":Highlight_codegen_main",
+)
+
+genrule(
+    name = "highlight_codegen",
+    srcs = [":highlight_codegen_native"],
+    outs = ["highlight_codegen.exe"],
+    cmd = "cp $(location :highlight_codegen_native) $@",
+    executable = True,
+)
+
+ocaml_module(
+    name = "Highlight_codegen_test",
+    struct = "highlight_codegen_test.ml",
+    deps = [
+        ":Frontend_lexer",
+        ":Highlight_codegen",
+        "@opam.yojson//lib",
+    ],
+)
+
+ocaml_test(
+    name = "highlight_codegen_test",
+    size = "small",
+    args = [
+        "$(rootpath :language.ebnf)",
+        "$(rootpath //csf/editor/tree-sitter-csf:src/grammar.json)",
+        "$(rootpath //csf/editor/tree-sitter-csf:src/scanner.c)",
+        "$(rootpath //csf/editor/tree-sitter-csf:queries/highlights.scm)",
+    ],
+    data = [
+        "language.ebnf",
+        "//csf/editor/tree-sitter-csf:queries/highlights.scm",
+        "//csf/editor/tree-sitter-csf:src/grammar.json",
+        "//csf/editor/tree-sitter-csf:src/scanner.c",
+    ],
+    main = ":Highlight_codegen_test",
+)

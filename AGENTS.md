@@ -80,7 +80,7 @@ There is exactly one `go.mod`, at this root. A nested one is a defect, and
 ## Consuming this repository
 
 The unit of consumption is a **deterministic source archive**, not a package
-registry entry. Each `v<version>` Release carries `candace-<sha12>.tar.gz`
+registry entry. Each `v<version>` Release carries `csf-<sha12>.tar.gz`
 and its `.sha256`; the tarball is this tree re-rooted so `MODULE.bazel` sits at
 the archive root, built twice and byte-compared before it is kept.
 
@@ -90,8 +90,8 @@ bazel_dep(name = "csf", version = "0.1.0")
 archive_override(
     module_name = "csf",
     integrity = "sha256-...",
-    strip_prefix = "candace-<sha12>",
-    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
+    strip_prefix = "csf-<sha12>",
+    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/csf-<sha12>.tar.gz"],
 )
 ```
 

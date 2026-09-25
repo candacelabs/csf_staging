@@ -40,3 +40,12 @@ ocaml_test(
     size = "small",
     main = ":Checker_test",
 )
+
+# Reviewed documentation inputs, consumed through Bazel dependency edges.
+filegroup(
+    name = "docsite_sources",
+    srcs = [
+        "README.md",
+    ],
+    visibility = ["//visibility:public"],
+)

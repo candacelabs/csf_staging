@@ -79,7 +79,7 @@ UI that does not name the product or the agent. The specs assert that too.
 
 ## The two ways to pin the archive
 
-Each release of `candacelabs/csf` carries a `candace-<sha12>.tar.gz` and its
+Each release of `candacelabs/csf` carries a `csf-<sha12>.tar.gz` and its
 `.sha256`. `MODULE.bazel` at the archive root makes the tarball a Bazel module,
 so there are two shapes, and this example is built both ways before any archive
 is published.
@@ -101,8 +101,8 @@ bazel_dep(name = "csf", version = "0.1.0")
 archive_override(
     module_name = "csf",
     integrity = "sha256-...",          # `integrity` from the packager
-    strip_prefix = "candace-<sha12>",  # `strip_prefix` from the packager
-    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
+    strip_prefix = "csf-<sha12>",  # `strip_prefix` from the packager
+    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/csf-<sha12>.tar.gz"],
 )
 ```
 

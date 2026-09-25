@@ -509,7 +509,7 @@ releases rather than running the system:
 - **The consumer archive tools**, `tools/package_candace_archive.sh` and
   `tools/test_candace_external_consumer.sh`, which read the tracked `candace/`
   tree out of monorepo Git history. What they produce — the
-  `candace-<sha12>.tar.gz` on each `export-<sha12>` Release — is what a
+  `csf-<sha12>.tar.gz` on each `export-<sha12>` Release — is what a
   consumer actually pins; see [`docs/extending.md`](../docs/extending.md).
 
 An external consumer that wants its own Core builds it the supported way

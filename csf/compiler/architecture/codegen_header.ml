@@ -1,4 +1,4 @@
-type syntax = Ocaml | Mermaid | Markdown
+type syntax = Ocaml | Mermaid | Markdown | Hash | C | Sexp
 
 let generator_name = "CandaceCodegen"
 
@@ -27,9 +27,50 @@ let banner = [
   String.make 60 '/';
 ]
 
-let render syntax =
+type provenance = {
+  sources : string list;
+  generator : string;
+  owner : string;
+  regenerate : string;
+}
+
+let contains text piece =
+  let width = String.length piece in
+  let rec scan at = at + width <= String.length text &&
+    (String.sub text at width = piece || scan (at + 1)) in
+  scan 0
+
+let validate_metadata value =
+  let absolute token = String.starts_with ~prefix:"/" token &&
+    not (String.starts_with ~prefix:"//" token) in
+  if value = "" || String.trim value <> value ||
+     String.exists (fun character -> Char.code character < 32 || Char.code character = 127) value ||
+     List.exists (contains value) ["(*"; "*)"; "/*"; "*/"; "--"; "\""] ||
+     List.exists absolute (String.split_on_char ' ' value) then
+    invalid_arg "generated provenance must use single-line relative paths or Bazel labels without comment delimiters"
+
+let provenance_lines provenance =
+  if provenance.sources = [] then invalid_arg "generated provenance requires a source";
+  List.iter validate_metadata
+    (provenance.sources @ [provenance.generator; provenance.owner; provenance.regenerate]);
+  List.map (fun source -> "Source: " ^ source) provenance.sources @ [
+    "Generator: " ^ provenance.generator;
+    "Regeneration owner: " ^ provenance.owner;
+    "Regenerate: " ^ provenance.regenerate;
+  ]
+
+let render ?provenance syntax =
   let comment line = match syntax with
     | Ocaml -> "(* " ^ line ^ " *)\n"
     | Mermaid -> "%% " ^ line ^ "\n"
-    | Markdown -> "<!-- " ^ line ^ " -->\n" in
-  String.concat "" (List.map comment banner)
+    | Markdown -> "<!-- " ^ line ^ " -->\n"
+    | Hash -> "# " ^ line ^ "\n"
+    | C -> "/* " ^ line ^ " */\n"
+    | Sexp -> ";; " ^ line ^ "\n" in
+  let lines = match provenance with
+    | None -> banner
+    | Some provenance ->
+        match List.rev banner with
+        | border :: body -> List.rev body @ provenance_lines provenance @ [border]
+        | [] -> assert false in
+  String.concat "" (List.map comment lines)

@@ -42,3 +42,12 @@ go_test(
         "@com_github_onsi_gomega//:gomega",
     ],
 )
+
+# Reviewed documentation inputs, consumed through Bazel dependency edges.
+filegroup(
+    name = "docsite_sources",
+    srcs = [
+        "README.md",
+    ],
+    visibility = ["//visibility:public"],
+)

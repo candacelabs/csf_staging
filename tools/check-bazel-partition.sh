@@ -16,9 +16,9 @@ die() {
 
 partition_for() {
   case "$1" in
-    //csf/compiler:*|//csf/compiler/*|//csf/architecture/*|//tools/gorilla_mux_lint:*) printf '%s\n' compiler ;;
+    //csf/compiler:*|//csf/compiler/*|//csf/editor:*|//csf/editor/*|//csf/architecture/*|//tools/gorilla_mux_lint:*|//tools/devcontainer:*) printf '%s\n' compiler ;;
     //xetcas/go:*|//xetcas/go/*) printf '%s\n' go-libraries ;;
-    //xetcas:*|//xetcas/*) printf '%s\n' rust ;;
+    //xetcas:*|//xetcas/*|//tools/csf-operator:*) printf '%s\n' rust ;;
     //pkg/gotth/test/internal/chaos:*|//pkg/gotth/test/internal/chaos/*) printf '%s\n' go-chaos ;;
     //pkg:*|//pkg/*|//proto:*|//proto/*) printf '%s\n' go-libraries ;;
     //services:*|//services/*) printf '%s\n' go-services ;;

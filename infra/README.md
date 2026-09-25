@@ -6,19 +6,19 @@ inspectable agent loop. It does not deploy a robot or capture this desktop
 agent's internal model calls automatically.
 
 Install the standalone Rust operator with `./install.sh`, inspect its dry
-startup plan with `candace csf`, and start the complete composition with
-`candace csf up`. Use `candace csf --help` for the command reference. The
+startup plan with `csf`, and start the complete composition with
+`csf up`. Use `csf --help` for the command reference. The
 runtime is built in its pinned container; private
 credentials, database schema and evidence state are provisioned automatically.
 See the [CSF operator guide](../tools/csf-operator/README.md).
 
 ```sh
-candace csf
-candace csf up --dry
-candace csf up
-candace csf status
-candace csf logs --service runtime --tail 80
-candace csf down
+csf
+csf up --dry
+csf up
+csf status
+csf logs --service runtime --tail 80
+csf down
 ```
 
 `down` retains PostgreSQL and other Compose volumes. Startup creates a private
@@ -54,7 +54,7 @@ credentials when it finds existing `csf` volumes without their original state.
 
 ## Training results
 
-MLflow is included for research compatibility but is not started by `candace csf up`;
+MLflow is included for research compatibility but is not started by `csf up`;
 the CSF core path does not depend on training services. The notes below describe
 the retained training setup and its evidence, not services started by the core
 command.
@@ -159,9 +159,9 @@ The `runtime` container builds `candace/app/csf/cmd` from the checked-out Go
 module, initializes and migrates the durable PostgreSQL schema, mounts persistent
 work/evidence state, and connects to the CSF-owned OpenSearch service. It binds
 HTTP/MCP to loopback by default. Its PostgreSQL and artifact state survives
-`candace csf down` and later starts.
+`csf down` and later starts.
 
 Workbench session scheduling remains disabled until the standalone runtime
 image includes the Copilot CLI and an operator supplies GitHub Copilot
-authorization. The `candace csf up` startup output states this boundary; core CSF
+authorization. The `csf up` startup output states this boundary; core CSF
 services do not wait for provider credentials.

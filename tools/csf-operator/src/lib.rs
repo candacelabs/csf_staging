@@ -1,3 +1,6 @@
+mod archive_workbench;
+mod docs;
+
 use anyhow::{anyhow, bail, Context, Result};
 use base64::Engine;
 use clap::{Parser, Subcommand};
@@ -48,27 +51,19 @@ const COPILOT_TOKEN_ENVIRONMENTS: &[&str] = &["COPILOT_GITHUB_TOKEN", "GH_TOKEN"
 type Credentials = BTreeMap<String, String>;
 
 #[derive(Parser, Debug)]
-#[command(
-    name = "candace",
-    about = "Operate Candace applications",
-    disable_help_subcommand = true
-)]
+#[command(name = "csf", about = "Operate CSF", disable_help_subcommand = true)]
 struct Cli {
     #[command(subcommand)]
-    command: CommandGroup,
-}
-
-#[derive(Subcommand, Debug, PartialEq, Eq)]
-enum CommandGroup {
-    /// Run the complete standalone CSF composition.
-    Csf {
-        #[command(subcommand)]
-        action: Option<Action>,
-    },
+    action: Option<Action>,
 }
 
 #[derive(Subcommand, Debug, PartialEq, Eq)]
 enum Action {
+    /// Build and verify the complete documentation site.
+    Docs {
+        #[command(subcommand)]
+        action: docs::Action,
+    },
     /// Build and start CSF, initialize dependencies, and wait for readiness.
     Up {
         /// Validate and print the startup plan without creating state or calling Docker.
@@ -215,6 +210,7 @@ struct WorkbenchStatus {
     enabled: bool,
     reason: String,
     copilot_token_changed: bool,
+    requested: bool,
 }
 
 pub fn run<I, T>(args: I) -> Result<()>
@@ -223,8 +219,10 @@ where
     T: Into<OsString> + Clone,
 {
     let cli = Cli::try_parse_from(args)?;
-    let CommandGroup::Csf { action } = cli.command;
-    let action = action.unwrap_or(Action::Up { dry: true });
+    let action = cli.action.unwrap_or(Action::Up { dry: true });
+    if let Action::Docs { action } = action {
+        return docs::run(action, &SystemRunner);
+    }
     if action == Action::Key {
         println!("{}", read_agent_mcp_key(&state_dir()?)?);
         return Ok(());
@@ -261,7 +259,7 @@ impl<R: ProcessRunner> Operator<R> {
             Action::Down | Action::Status | Action::Logs { .. } => {
                 let credentials_file = self.state_dir.join("credentials.env");
                 if !credentials_file.is_file() {
-                    println!("CSF has not been initialized; run `candace csf up` first.");
+                    println!("CSF has not been initialized; run `csf up` first.");
                     return Ok(());
                 }
                 let values = self.credentials(false)?;
@@ -284,7 +282,7 @@ impl<R: ProcessRunner> Operator<R> {
                     _ => unreachable!(),
                 }
             }
-            Action::Key => unreachable!(),
+            Action::Key | Action::Docs { .. } => unreachable!(),
         }
     }
 
@@ -332,7 +330,7 @@ impl<R: ProcessRunner> Operator<R> {
             "{}",
             serde_json::to_string_pretty(&json!({
                 "dry": true,
-                "would_run": "candace csf up",
+                "would_run": "csf up",
                 "compose_project": PROJECT,
                 "compose_definition": compose,
                 "source_root": self.source_root,
@@ -356,8 +354,10 @@ impl<R: ProcessRunner> Operator<R> {
             );
         }
         let mut values = self.credentials(true)?;
-        let (evidence, workbench) = self.private_runtime_config(&mut values)?;
+        let (evidence, mut workbench) = self.private_runtime_config(&mut values)?;
         self.preflight_runtime_port(&values)?;
+        self.compose_stream(&["build", RUNTIME_SERVICE], &values)?;
+        self.prepare_workbench(&mut values, &mut workbench)?;
 
         println!("Starting the private CSF services in the isolated `csf` Compose project.");
         let mut core_args = vec!["up", "-d", "--wait", "--wait-timeout", "300"];
@@ -373,7 +373,6 @@ impl<R: ProcessRunner> Operator<R> {
             required_string(&model, "model_id")?.to_owned(),
         );
         write_credentials(&self.state_dir.join("credentials.env"), &values, false)?;
-        self.compose_stream(&["build", RUNTIME_SERVICE], &values)?;
         self.initialize_database(&values)?;
         let runtime_args = runtime_up_args(workbench.copilot_token_changed);
         self.compose_stream_owned(&runtime_args, &values)?;
@@ -396,7 +395,7 @@ impl<R: ProcessRunner> Operator<R> {
 
     fn call(&self, operation: &str) -> Result<()> {
         if !self.state_dir.join("credentials.env").is_file() {
-            bail!("CSF is not initialized; run `candace csf up` first.");
+            bail!("CSF is not initialized; run `csf up` first.");
         }
         let values = self.credentials(false)?;
         let endpoint = format!(
@@ -422,7 +421,7 @@ impl<R: ProcessRunner> Operator<R> {
         let path = self.state_dir.join("credentials.env");
         if !path.exists() {
             if !create {
-                bail!("CSF credentials are absent; run `candace csf up` first.");
+                bail!("CSF credentials are absent; run `csf up` first.");
             }
             let output = self.runner.capture(&Invocation::new(
                 "docker",
@@ -494,22 +493,13 @@ impl<R: ProcessRunner> Operator<R> {
         write_json(&database, &database_document, true)?;
         write_json(&workbench_database, &database_document, true)?;
 
-        let mut workbench = WorkbenchStatus {
+        let workbench = WorkbenchStatus {
             enabled: false,
-            reason: "No Copilot token is available; set COPILOT_GITHUB_TOKEN, GH_TOKEN, or GITHUB_TOKEN and run `candace csf up`.".to_owned(),
+            reason: "No Copilot token is available; set COPILOT_GITHUB_TOKEN, GH_TOKEN, or GITHUB_TOKEN and run `csf up`.".to_owned(),
             copilot_token_changed: token_changed,
+            requested: !token.is_empty(),
         };
-        if !token.is_empty() {
-            let (enabled, reason) = self.prepare_workbench_repository(&workbench_root)?;
-            workbench.enabled = enabled;
-            workbench.reason = reason;
-        }
 
-        let workbench_config = if workbench.enabled {
-            workbench_database.display().to_string()
-        } else {
-            String::new()
-        };
         values.extend([
             (
                 "CSF_SOURCE_ROOT".to_owned(),
@@ -546,7 +536,7 @@ impl<R: ProcessRunner> Operator<R> {
                 "CSF_WORKBENCH_DATABASE_CONFIG_FILE".to_owned(),
                 workbench_database.display().to_string(),
             ),
-            ("CSF_WORKBENCH_DATABASE_CONFIG".to_owned(), workbench_config),
+            ("CSF_WORKBENCH_DATABASE_CONFIG".to_owned(), String::new()),
             (
                 "CSF_WORKBENCH_DIR".to_owned(),
                 workbench_root.display().to_string(),
@@ -570,92 +560,57 @@ impl<R: ProcessRunner> Operator<R> {
         Ok((evidence, workbench))
     }
 
-    fn prepare_workbench_repository(&self, workbench_root: &Path) -> Result<(bool, String)> {
-        ensure_private_directory(workbench_root)?;
-        let repository = workbench_root.join("repository");
-        let worktrees = workbench_root.join("worktrees");
-        for directory in [&repository, &worktrees] {
-            if directory.exists() || fs::symlink_metadata(directory).is_ok() {
-                ensure_private_directory(directory)?;
-            }
+    fn prepare_workbench(
+        &self,
+        values: &mut Credentials,
+        workbench: &mut WorkbenchStatus,
+    ) -> Result<()> {
+        if !workbench.requested {
+            return Ok(());
         }
-
-        let source_root = self.git_capture(&["rev-parse", "--show-toplevel"], &self.source_root)?;
-        if !source_root.success {
-            return Ok((
-                false,
-                "The CSF source checkout is not a Git repository.".to_owned(),
-            ));
-        }
-        let git_root = absolute_path(Path::new(source_root.stdout.trim()))?;
-        if git_root != absolute_path(&self.source_root)? {
-            return Ok((
-                false,
-                "The CSF source is nested in a monorepo; run from a standalone CSF clone to bound Workbench access.".to_owned(),
-            ));
-        }
-
-        let remote = self.git_capture(&["remote", "get-url", "origin"], &self.source_root)?;
-        let source_remote = if remote.success {
-            remote.stdout.trim().to_owned()
-        } else {
-            String::new()
-        };
-        validate_remote_url(&source_remote)?;
-
-        if repository.exists() {
-            let root = self.git_capture(&["rev-parse", "--show-toplevel"], &repository)?;
-            if !root.success
-                || absolute_path(Path::new(root.stdout.trim()))? != absolute_path(&repository)?
-            {
-                bail!("CSF Workbench repository state is not a standalone Git root.");
-            }
-        } else {
-            let clone = self.runner.capture(&Invocation::new(
-                "git",
-                [
-                    OsString::from("clone"),
-                    OsString::from("--local"),
-                    OsString::from("--no-hardlinks"),
-                    OsString::from("--quiet"),
-                    self.source_root.as_os_str().to_owned(),
-                    repository.as_os_str().to_owned(),
-                ],
-            ))?;
-            if !clone.success {
-                bail!("Could not create the private CSF Workbench repository.");
-            }
-            let remote_args = if source_remote.is_empty() {
-                vec![
-                    "remote".to_owned(),
-                    "remove".to_owned(),
-                    "origin".to_owned(),
-                ]
+        let (enabled, reason) = archive_workbench::prepare(
+            &self.source_root,
+            &self.state_dir.join("workbench"),
+            &|args| self.runtime_git_capture(args),
+        )?;
+        workbench.enabled = enabled;
+        workbench.reason = reason;
+        values.insert(
+            "CSF_WORKBENCH_DATABASE_CONFIG".to_owned(),
+            if enabled {
+                "/config/csf-workbench-database.json".to_owned()
             } else {
-                vec![
-                    "remote".to_owned(),
-                    "set-url".to_owned(),
-                    "origin".to_owned(),
-                    source_remote,
-                ]
-            };
-            let output = self.git_capture_owned(&remote_args, &repository)?;
-            ensure_process_success(&output, "Git remote configuration")?;
-        }
-        ensure_private_directory(&worktrees)?;
-        Ok((true, String::new()))
+                String::new()
+            },
+        );
+        write_credentials(&self.state_dir.join("credentials.env"), values, false)?;
+        Ok(())
     }
 
-    fn git_capture(&self, args: &[&str], directory: &Path) -> Result<ProcessOutput> {
-        let mut owned = vec![OsString::from("-C"), directory.as_os_str().to_owned()];
-        owned.extend(args.iter().map(OsString::from));
-        self.runner.capture(&Invocation::new("git", owned))
-    }
-
-    fn git_capture_owned(&self, args: &[String], directory: &Path) -> Result<ProcessOutput> {
-        let mut owned = vec![OsString::from("-C"), directory.as_os_str().to_owned()];
-        owned.extend(args.iter().map(OsString::from));
-        self.runner.capture(&Invocation::new("git", owned))
+    fn runtime_git_capture(&self, args: &[OsString]) -> Result<ProcessOutput> {
+        // The runtime image owns Git. Mount the release read-only; no host Git
+        // installation, shell command, credentials or Docker socket is passed in.
+        let mut invocation = self.compose_invocation(&[
+            "run",
+            "--rm",
+            "--no-deps",
+            "-T",
+            "--volume",
+            &format!("{}:/source:ro", self.source_root.display()),
+            "--env",
+            "GIT_CONFIG_NOSYSTEM=1",
+            "--env",
+            "GIT_CONFIG_GLOBAL=/dev/null",
+            "--env",
+            "GIT_TERMINAL_PROMPT=0",
+            "--entrypoint",
+            "git",
+            RUNTIME_SERVICE,
+            "-c",
+            "core.hooksPath=/dev/null",
+        ]);
+        invocation.args.extend_from_slice(args);
+        self.runner.capture(&invocation)
     }
 
     fn compose_invocation<T: AsRef<OsStr>>(&self, args: &[T]) -> Invocation {
@@ -777,7 +732,7 @@ impl<R: ProcessRunner> Operator<R> {
             }
             thread::sleep(Duration::from_secs(1));
         }
-        bail!("CSF did not become ready at {url}; inspect `candace csf logs`.")
+        bail!("CSF did not become ready at {url}; inspect `csf logs`.")
     }
 
     fn endpoints(&self, values: &Credentials) -> Result<(String, String)> {
@@ -1423,14 +1378,14 @@ fn validate_remote_url(remote: &str) -> Result<()> {
             || parsed.fragment().is_some()
             || (!parsed.username().is_empty() && !permitted_ssh_user)
         {
-            bail!("CSF source origin URL embeds credentials; configure Git credentials outside the URL before running `candace csf up`.");
+            bail!("CSF source origin URL embeds credentials; configure Git credentials outside the URL before running `csf up`.");
         }
         return Ok(());
     }
     if let Some((user_host, _)) = remote.split_once(':') {
         if let Some((user, _)) = user_host.split_once('@') {
             if user != "git" {
-                bail!("CSF source origin URL embeds credentials; configure Git credentials outside the URL before running `candace csf up`.");
+                bail!("CSF source origin URL embeds credentials; configure Git credentials outside the URL before running `csf up`.");
             }
         }
     }
@@ -1596,9 +1551,9 @@ mod tests {
     }
 
     #[test]
-    fn candace_csf_defaults_to_dry_up() {
-        let parsed = Cli::try_parse_from(["candace", "csf"]).unwrap();
-        let CommandGroup::Csf { action } = parsed.command;
+    fn csf_defaults_to_dry_up() {
+        let parsed = Cli::try_parse_from(["csf"]).unwrap();
+        let action = parsed.action;
         assert_eq!(
             action.unwrap_or(Action::Up { dry: true }),
             Action::Up { dry: true }
@@ -1607,12 +1562,42 @@ mod tests {
 
     #[test]
     fn explicit_up_is_live_and_dry_is_opt_in() {
-        let parsed = Cli::try_parse_from(["candace", "csf", "up"]).unwrap();
-        let CommandGroup::Csf { action } = parsed.command;
+        let parsed = Cli::try_parse_from(["csf", "up"]).unwrap();
+        let action = parsed.action;
         assert_eq!(action, Some(Action::Up { dry: false }));
-        let parsed = Cli::try_parse_from(["candace", "csf", "up", "--dry"]).unwrap();
-        let CommandGroup::Csf { action } = parsed.command;
+        let parsed = Cli::try_parse_from(["csf", "up", "--dry"]).unwrap();
+        let action = parsed.action;
         assert_eq!(action, Some(Action::Up { dry: true }));
+    }
+
+    #[test]
+    fn workbench_git_uses_runtime_container_and_read_only_source() {
+        let temporary = TempDir::new().unwrap();
+        let operator = fixture_operator(
+            FakeRunner::with_captures(vec![success("/work/repository\n")]),
+            &temporary,
+        );
+        operator
+            .runtime_git_capture(&[
+                "-C".into(),
+                "/work/repository".into(),
+                "rev-parse".into(),
+                "--show-toplevel".into(),
+            ])
+            .unwrap();
+        let invocations = operator.runner.invocations.lock().unwrap();
+        let invocation = &invocations[0];
+        assert_eq!(invocation.program, "docker");
+        assert!(invocation
+            .args
+            .windows(2)
+            .any(|args| args == ["--entrypoint", "git"]));
+        assert!(invocation
+            .args
+            .contains(&format!("{}:/source:ro", operator.source_root.display()).into()));
+        assert!(invocation.args.contains(&"--no-deps".into()));
+        assert!(invocation.args.contains(&"GIT_CONFIG_NOSYSTEM=1".into()));
+        assert!(!invocation.args.contains(&"--privileged".into()));
     }
 
     #[test]
