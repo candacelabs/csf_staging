@@ -2,8 +2,8 @@
 # Run Bazel against this module inside the pinned Bazel container.
 #
 # There is no host Bazel and no host Go anywhere in this project's toolchain
-# story: the Bazel release is pinned by digest here and by version in
-# .bazelversion, and the Go SDK is downloaded by rules_go (see MODULE.bazel).
+# story: bazel/execution_image.txt pins the image digest and .bazelversion
+# pins Bazel. The Go SDK is downloaded by rules_go (see MODULE.bazel).
 # That makes `tools/bazel.sh build //...` mean the same thing on a developer's
 # machine and on a CI runner.
 #
@@ -19,8 +19,6 @@
 # Usage: tools/bazel.sh <bazel arguments...>
 set -Eeuo pipefail
 
-bazel_image='gcr.io/bazel-public/bazel:9.2.0@sha256:e59bd66f8daf69f02dbfc18dbd72f0ecfe7926bbda95a5c9eb62433d83b8bd02'
-
 die() {
   printf 'candace bazel: %s\n' "$*" >&2
   exit 1
@@ -30,6 +28,7 @@ command -v docker >/dev/null 2>&1 || die 'docker is required to run the pinned B
 [[ $# -gt 0 ]] || die 'no Bazel arguments were given'
 
 module_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+bazel_image=$(<"$module_root/bazel/execution_image.txt")
 workspace_root=$(cd -- "${CANDACE_BAZEL_WORKSPACE:-$module_root}" && pwd -P)
 [[ -f "$workspace_root/MODULE.bazel" ]] || die 'workspace requires MODULE.bazel'
 # Bazel keys output bases by the container workspace path. Each selected host

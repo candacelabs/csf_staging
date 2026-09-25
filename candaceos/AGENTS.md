@@ -198,7 +198,7 @@ Backend facts an agent must not misstate:
   and return assistant text. This backend never reads GitHub or Copilot
   credentials.
 - **Custom** (fleet only). An externally compiled Core binary, built by a
-  consumer against a pinned `candace-<sha12>.tar.gz`, is layered over the
+  consumer against a pinned `csf-<sha12>.tar.gz`, is layered over the
   standard Core runtime image. The deployer records its SHA-256 and export
   revision in the receipt and refuses a binary whose export revision differs
   from the exact deployed source revision.
@@ -318,7 +318,7 @@ public export root, implements the harness and component interfaces in its own
 Go packages, and links its own Core binary. Nothing is loaded at runtime.
 
 The snapshot is the whole `candace/` tree. Each publish of `candacelabs/csf_staging`
-carries `candace-<sha12>.tar.gz` and its `.sha256`, built by
+carries `csf-<sha12>.tar.gz` and its `.sha256`, built by
 `tools/package_candace_archive.sh` in the monorepo: `git archive` of the tracked
 export root at one revision, re-rooted so `MODULE.bazel` sits at the archive
 root, normalized (ustar, name-sorted, zero mtimes, uid/gid 0, `gzip -n`) and

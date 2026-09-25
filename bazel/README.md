@@ -36,8 +36,8 @@ http_archive(name = "bazel_gazelle", sha256 = "...", urls = ["..."])
 http_archive(
     name = "csf",
     sha256 = "<sha256 from the release>",
-    strip_prefix = "candace-<sha12>",
-    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
+    strip_prefix = "csf-<sha12>",
+    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/csf-<sha12>.tar.gz"],
     # This module's committed BUILD files were generated under bzlmod, where
     # rules_go and Gazelle are named `rules_go` and `gazelle`. Under WORKSPACE
     # they are not, so the load labels have to be remapped.

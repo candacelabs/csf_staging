@@ -31,7 +31,7 @@ This repository is generated: it is the tracked `candace/` tree of a private
 monorepo, published as a fresh snapshot with no history. Every published
 snapshot carries immutable `export-<sha12>` and `v<version>` tags. The GitHub
 Release uses `v<version>` and carries a deterministic source archive,
-`candace-<sha12>.tar.gz`, with its `.sha256` beside it. That archive is the
+`csf-<sha12>.tar.gz`, with its `.sha256` beside it. That archive is the
 consumption artifact.
 
 The public commands below require an actually published public version.
@@ -73,8 +73,8 @@ explains the choice:
   archive_override(
       module_name = "csf",
       integrity = "sha256-...",          # verified archive's base64 SRI value
-      strip_prefix = "candace-<sha12>",
-      urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
+      strip_prefix = "csf-<sha12>",
+      urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/csf-<sha12>.tar.gz"],
   )
   ```
 

@@ -23,7 +23,7 @@ the browser Workbench bundle or start a model provider, simulator or database.
 
 ## Copy into your own Go repository
 
-Download and verify one `candace-<sha12>.tar.gz` source archive and extract it
+Download and verify one `csf-<sha12>.tar.gz` source archive and extract it
 beside your new repository. Copy `main.go`, `consumer_test.go` and
 `workbench-theme.css` from this directory into your repository, then run:
 
@@ -31,7 +31,7 @@ beside your new repository. Copy `main.go`, `consumer_test.go` and
 git init
 go mod init example.invalid/my-csf-host
 go mod edit -require=github.com/candacelabs/csf@v0.1.0
-go mod edit -replace=github.com/candacelabs/csf=../candace-<sha12>
+go mod edit -replace=github.com/candacelabs/csf=../csf-<sha12>
 go mod tidy
 go mod vendor
 go test -mod=vendor -race ./...
@@ -50,7 +50,7 @@ The repeatable acceptance command creates this separate Git repository itself:
 
 ```sh
 bash examples/csf-consumer/test-archive.sh \
-  /path/to/candace-<sha12>.tar.gz /tmp/my-csf-consumer-check
+  /path/to/csf-<sha12>.tar.gz /tmp/my-csf-consumer-check
 ```
 
 The output directory must be new. It retains the extraction, consumer Git
@@ -74,8 +74,8 @@ bazel_dep(name = "csf", version = "0.1.0")
 archive_override(
     module_name = "csf",
     integrity = "sha256-<archive integrity>",
-    strip_prefix = "candace-<sha12>",
-    urls = ["https://example.invalid/releases/candace-<sha12>.tar.gz"],
+    strip_prefix = "csf-<sha12>",
+    urls = ["https://example.invalid/releases/csf-<sha12>.tar.gz"],
 )
 ```
 

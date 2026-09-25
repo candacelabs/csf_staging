@@ -220,3 +220,13 @@ crate.from_cargo(
     skip_cargo_lockfile_overwrite = True,
 )
 use_repo(crate, "crates")
+
+# The standalone operator uses the same Rust toolchain and its existing Cargo
+# dependency lock. This is a separate Cargo package, not part of xetcas.
+crate.from_cargo(
+    name = "csf_operator_crates",
+    cargo_lockfile = "//tools/csf-operator:Cargo.lock",
+    manifests = ["//tools/csf-operator:Cargo.toml"],
+    skip_cargo_lockfile_overwrite = True,
+)
+use_repo(crate, "csf_operator_crates")

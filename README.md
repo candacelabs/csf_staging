@@ -416,7 +416,8 @@ the release assets with authenticated access and use the
 [verified local-archive consumer](examples/csf-consumer#copy-into-your-own-go-repository).
 The Go module path remains `github.com/candacelabs/csf` in both stages.
 
-Each Release carries `candace-<sha12>.tar.gz` and its `.sha256`. The tarball is
+New releases carry `csf-<sha12>.tar.gz` and its `.sha256`; historical releases
+retain their original archive names. The tarball is
 this tree re-rooted so `MODULE.bazel` is at the archive root, plus a deterministic
 `.candace-source.json` recording the source revision and selected tree, built twice and
 byte-compared before it is kept.
@@ -427,7 +428,7 @@ the base64 SRI value required by Bazel (Bash, `sha256sum` and OpenSSL):
 
 ```bash
 set -euo pipefail
-archive='candace-<sha12>.tar.gz'
+archive='csf-<sha12>.tar.gz'
 sha256sum --check "$archive.sha256"
 printf 'sha256-'
 openssl dgst -sha256 -binary "$archive" | openssl base64 -A
@@ -443,8 +444,8 @@ bazel_dep(name = "csf", version = "0.1.0")
 archive_override(
     module_name = "csf",
     integrity = "sha256-...",          # base64 SRI output from the command above
-    strip_prefix = "candace-<sha12>",
-    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/candace-<sha12>.tar.gz"],
+    strip_prefix = "csf-<sha12>",
+    urls = ["https://github.com/candacelabs/csf/releases/download/v0.1.0/csf-<sha12>.tar.gz"],
 )
 ```
 

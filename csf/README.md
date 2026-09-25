@@ -381,7 +381,7 @@ shutdown. The archive acceptance script creates a fresh Git repository, vendors
 dependencies, then tests/builds with networking disabled.
 
 ```sh
-bash examples/csf-consumer/test-archive.sh /path/to/candace-snapshot.tar.gz /tmp/csf-consumer-check
+bash examples/csf-consumer/test-archive.sh /path/to/csf-snapshot.tar.gz /tmp/csf-consumer-check
 ```
 
 For Bazel consumers, use the public repository's

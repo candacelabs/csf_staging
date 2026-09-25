@@ -2,7 +2,7 @@
     Edit [banner] in the implementation and rebuild/regenerate to change it; there
     are no environment variables or command-line overrides. *)
 
-type syntax = Ocaml | Mermaid | Markdown
+type syntax = Ocaml | Mermaid | Markdown | Hash | C | Sexp
 
 (** Stable generator identity shared with generated-file ownership checks. *)
 val generator_name : string
@@ -29,7 +29,19 @@ val text : string
     is one comment line; the same comment-safety constraints as [text] apply. *)
 val banner : string list
 
+type provenance = {
+  sources : string list;
+  generator : string;
+  owner : string;
+  regenerate : string;
+}
+(** Logical source paths or Bazel labels, generator source, owning build target,
+    and an executable regeneration command relative to the checkout root.
+    Values must be nonempty single lines without comment delimiters or absolute
+    filesystem paths. Invalid metadata raises [Invalid_argument]. *)
+
 (** Render the configured banner in the selected comment syntax, with one trailing
     newline. Callers put this first and append their own content/blank lines.
-    There is deliberately no arbitrary-text argument to this renderer. *)
-val render : syntax -> string
+    Optional typed provenance appears before the closing border. Without it,
+    the original banner is preserved byte-for-byte. *)
+val render : ?provenance:provenance -> syntax -> string

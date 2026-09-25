@@ -96,3 +96,12 @@ go_test(
         "@org_uber_go_mock//gomock",
     ],
 )
+
+# Reviewed documentation inputs, consumed through Bazel dependency edges.
+filegroup(
+    name = "docsite_sources",
+    srcs = [
+        "README.md",
+    ],
+    visibility = ["//visibility:public"],
+)

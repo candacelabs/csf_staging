@@ -1,22 +1,61 @@
 # Standalone CSF onboarding
 
-Use this guide from a fresh clone of the private staging repository, with
-access granted by its owner. The reviewed snapshot currently ships to
-`candacelabs/csf_staging`; publication to `candacelabs/csf` is a later step.
+Install CSF from a published public release with one command:
 
 ```sh
-git clone git@github.com:candacelabs/csf_staging.git
-cd csf_staging
-./install.sh
-candace csf up
+curl -fsSL https://raw.githubusercontent.com/candacelabs/csf/main/bootstrap.sh | sh
+csf up
 ```
 
-The install step provides the `candace` command. Bare `candace csf` is the
-same as `candace csf up --dry`: it validates the checkout and prints a startup
-plan without creating state or calling Docker or HTTP. Use `candace csf --help`
-for help. `candace csf up` builds the pinned runtime image and starts CSF and
-its required containers. Use `candace csf status`, `candace csf logs` and
-`candace csf down` to manage the same app. `down` keeps its persistent data.
+The installer supports Linux x86_64 and requires `curl` and a running local
+Docker daemon with the Compose plugin that this user can access. Other host platforms are rejected.
+Docker supplies the bootstrap interpreter
+and Bazel's build tools; no host Rust, C compiler, Python package, or separate
+editor plugin installation is required. The same install provides the `csf`
+command and [CSF syntax highlighting](../editor/README.md) for Neovim.
+
+The bootstrap resolves the latest semantic release in `candacelabs/csf`, reads
+its tagged export provenance, downloads the existing
+`csf-<source-sha12>.tar.gz` release asset and `.sha256` sidecar, and checks
+the checksum before validating and extracting the archive. It then runs that
+release's `install.sh`, which builds through the repository's Docker-backed
+Bazel toolchain. A missing public release fails explicitly; the installer never
+falls back to private staging repositories or a moving source branch.
+
+Release sources remain under
+`${CSF_RELEASES_DIR:-${XDG_DATA_HOME:-~/.local/share}/csf/releases}/vMAJOR.MINOR.PATCH/source`.
+The launcher needs that retained source tree to find its runtime definitions.
+Its default path is `~/.local/bin/csf`; `CSF_INSTALL_PATH` selects another
+absolute path. Add `~/.local/bin` to `PATH` if your shell does not include it.
+
+Rerun the same command to update. To select or roll back to a specific published
+release, pass its immutable semantic tag (replace the example below with an
+existing release):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/candacelabs/csf/main/bootstrap.sh | sh -s -- --version v1.2.3
+```
+
+Previous release directories are retained. Reusing a version verifies its
+source files against a freshly verified archive; unrelated directories and
+modified source files are never overwritten. Download or verification failures
+leave the current launcher untouched. Build failures retain the downloaded
+source for diagnosis and leave the previous launcher selected. A rollback
+selects the earlier CLI and editor runtime; it does not roll back application
+data or start, stop, or migrate running containers. A stale `.install-lock`
+after an abrupt interruption requires inspection before retrying.
+
+For a release archive, Workbench imports the verified source into a private Git
+repository using Git from the built runtime image. The import retains the source
+provenance marker and creates a new local commit; it does not claim that commit
+is the upstream revision or add an upstream remote. Existing Workbench changes
+are retained when updating CSF. No host Git installation is required.
+
+Bare `csf` is the same as `csf up --dry`: it validates the retained checkout
+and prints a startup plan without creating state or calling Docker or HTTP.
+Use `csf --help` for help. `csf up` builds the pinned runtime image and starts
+CSF and its required containers. Use `csf status`, `csf logs`, and `csf down`
+to manage the same app. `down` keeps its persistent data.
 
 For a consumer that already owns a Bazel workspace, the archive also provides
 the same application as `@csf//app/csf/cmd:cmd`. Run it with `serve` and set
@@ -63,14 +102,14 @@ for agent-owned requests.
 Run the Workbench scheduler by setting one provider credential before startup:
 
 ```sh
-COPILOT_GITHUB_TOKEN=... candace csf up
+COPILOT_GITHUB_TOKEN=... csf up
 ```
 
 `GH_TOKEN` and `GITHUB_TOKEN` are also accepted. The operator saves the token
 in its private state directory. Without a provider token, the core runtime
 starts and reports why Workbench scheduling is disabled.
 
-`candace csf key` creates the private agent-MCP signing key if needed and
+`csf key` creates the private agent-MCP signing key if needed and
 prints it. The file lives at `$CANDACE_CSF_STATE_DIR/agent-mcp-key` (or
 `~/.local/state/csf/agent-mcp-key`) with mode `0600`. Workbench keeps this key
 host-side and attaches a derived HMAC-SHA256 bearer credential bound to each

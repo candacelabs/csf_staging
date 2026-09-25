@@ -40,3 +40,23 @@ exports_files(
 )
 
 gazelle(name = "gazelle")
+
+# Reviewed documentation inputs, consumed through Bazel dependency edges.
+filegroup(
+    name = "docsite_sources",
+    srcs = [
+        "README.md",
+        "docs/assets/badge-go.svg",
+        "docs/assets/badge-license.svg",
+        "docs/assets/badge-lithe.svg",
+        "docs/assets/badge-status.svg",
+        "docs/assets/badge-version.svg",
+        "docs/assets/csf-cpu0-mapping.svg",
+        "docs/assets/csf-wordmark.svg",
+        "//csf:docsite_sources",
+        "//pkg/httpserver:docsite_sources",
+        "//services/copilot-adapter:docsite_sources",
+        "//tools/gorilla_mux_lint:docsite_sources",
+    ],
+    visibility = ["//visibility:public"],
+)
